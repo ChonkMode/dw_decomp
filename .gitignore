@@ -1,7 +1,5 @@
-.DS_Store
 .venv/
 asm/
-assets/
 bin/
 build/
 disks/
