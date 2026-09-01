@@ -25,7 +25,7 @@ MWCCWRAP_FLAGS += -O4 -sdata 8 -Werror -requireprotos -gccincludes \
 
 export MWCIncludes =
 
-WIBO ?= bin/wibo-x86_64
+WIBO ?= bin/wibo
 
 METROWRAP ?= bin/metrowrap/mw
 METROWRAP_FLAGS ?= --use-wibo --wibo-path $(WIBO)
