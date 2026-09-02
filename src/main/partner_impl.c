@@ -178,7 +178,30 @@ void initializeEvolvedPartner(int32_t type, int32_t posX, int32_t posY,
 	IMMORTAL_HOUR = -1;
 }
 
-INCLUDE_ASM("asm/main/nonmatchings/partner_impl", resetPartnerPara);
+void resetPartnerPara(PartnerPara *para, int32_t type)
+{
+	PARTNER_PARA.poopLevel = RAISE_DATA[type].poopTimer;
+	PARTNER_PARA.unused2 = 0;
+	PARTNER_PARA.unused1 = 0;
+	PARTNER_PARA.poopingTimer = -1;
+	PARTNER_PARA.tiredness = 0;
+	PARTNER_PARA.subTiredness = 0;
+	PARTNER_PARA.tirednessHungerTimer = 0;
+	PARTNER_PARA.timesBeingSick = 0;
+	PARTNER_PARA.areaEffectTimer = 0;
+	PARTNER_PARA.sicknessTimer = 0;
+	PARTNER_PARA.injuryTimer = 0;
+	PARTNER_PARA.sicknessTries = 0;
+	PARTNER_PARA.unused4 = 0;
+
+	setFoodTimer(type);
+
+	PARTNER_PARA.starvationTimer = -1;
+	PARTNER_PARA.emptyStomachTimer = 0;
+	PARTNER_PARA.weight = RAISE_DATA[type].defaultWeight;
+	PARTNER_PARA.careMistakes = 0;
+	PARTNER_PARA.battles = 0;
+}
 
 INCLUDE_ASM("asm/main/nonmatchings/partner_impl", initializeReincarnatedPartner);
 
