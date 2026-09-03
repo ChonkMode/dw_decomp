@@ -26,7 +26,7 @@ void spawnItem(int32_t type, int16_t x, int16_t y);
 void spawnSpriteAtLocation(int16_t x, int16_t y, int16_t z, int16_t w,
 			   int32_t type);
 void spawnSpriteAtEntity(int32_t entId, int32_t sprite, int32_t param);
-void setRectImpassible(int16_t x, int16_t y, int8_t w, int8_t h);
+void setRectImpassible(int32_t x, int32_t y, int32_t w, int32_t h);
 void addEntityText(int32_t a0, int32_t a1, int32_t a2, int32_t a3,
 		   int32_t a4);
 int32_t startBattle(int16_t instanceId);
@@ -575,8 +575,8 @@ void scriptInstruction64to7E(int32_t op)
 		pollNextScriptUByte(&byteArg1);
 		pollNextTwoScriptShorts(&posX, &posY);
 		pollNextTwoScriptBytes(&byteArg2, &byteArg3);
-		setRectImpassible(posX, posY, byteArg2,
-				  byteArg3);
+		setRectImpassible(posX, posY, (int8_t)byteArg2,
+				  (int8_t)byteArg3);
 		break;
 	case 0x7d:
 		pollNextScriptUByte(&byteArg1);
