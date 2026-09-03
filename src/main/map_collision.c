@@ -105,7 +105,58 @@ int32_t checkMapCollisionX(Entity *entity, int32_t direction)
 	return 0;
 }
 
-INCLUDE_ASM("asm/main/nonmatchings/map_collision", checkMapCollisionY);
+int32_t checkMapCollisionY(Entity *entity, int32_t direction)
+{
+	int16_t edgePos;
+	VECTOR *position;
+	int16_t radius;
+	int32_t halfRadius;
+	int32_t bottomRadius;
+	int32_t originalZ;
+	int32_t topValue;
+	int16_t topPos;
+	int16_t edgeTile;
+	int16_t topTile;
+	int16_t bottomTile;
+	int16_t bottomPos;
+
+	position = &entity->posData->location;
+	radius = DIGIMON_DATA[entity->type].radius;
+	if (direction == 0) {
+		edgePos = position->vx - radius;
+	} else {
+		edgePos = position->vx + radius;
+	}
+	edgeTile = edgePos / 100 + 0x32;
+	if (edgePos < 0) {
+		edgeTile--;
+	}
+
+	halfRadius = radius / 2;
+	bottomRadius = copyValue(halfRadius);
+	topValue = originalZ = position->vz;
+	topValue += halfRadius;
+	topPos = topValue;
+	topTile = 0x31 - topPos / 100;
+	if (topPos < 0) {
+		topTile++;
+	}
+
+	bottomPos = originalZ - bottomRadius;
+	bottomTile = 0x31 - bottomPos / 100;
+	if (bottomPos < 0) {
+		bottomTile++;
+	}
+
+	for (; topTile <= bottomTile; topTile++) {
+		if ((((uint8_t *)MAP_COLLISION_DATA)[edgeTile + topTile * 100] &
+		     0x80) != 0) {
+			return 1;
+		}
+	}
+
+	return 0;
+}
 
 void getModelTile(VECTOR *pos, int16_t *outTileX, int16_t *outTileY)
 {
