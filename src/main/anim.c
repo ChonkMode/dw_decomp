@@ -3,7 +3,9 @@
 
 #include <dw/clock.h>
 #include <dw/entity.h>
+#include <dw/model.h>
 #include <dw/params.h>
+#include <dw/sound.h>
 #include <dw/types.h>
 
 #include "common.h"
@@ -30,6 +32,8 @@ void readMomentumInstruction(int16_t *delta, int16_t *reload1,
 int32_t applyMomentum(int32_t base, int16_t reload, int16_t delta,
 		      int16_t *counter, int8_t step, int32_t offset);
 void applyRootMomentum(MomentumData *momentum, Entity *entity);
+
+int32_t getEntityType(Entity *entity);
 
 void *anim_order_anchor[] = {
 	applyRootMomentum,
@@ -143,10 +147,6 @@ void setupModelMatrix(PositionData *posData)
 	ScaleMatrix(&matrix->coord, &posData->scale);
 	matrix->flg = 0;
 }
-
-INCLUDE_ASM("asm/main/nonmatchings/anim", startAnimation);
-
-INCLUDE_ASM("asm/main/nonmatchings/anim", tickAnimation);
 
 inline int16_t *getAnimInt16Ptr(uint8_t *ptr)
 {
@@ -281,6 +281,225 @@ void tickMomentum(Entity *entity, MomentumData *momentumBase)
 		pointers.scale = (long *)((uint8_t *)pointers.scale +
 					 sizeof(PositionData));
 	}
+}
+
+/* CodeWarrior retains scheduler state between functions. Keep tickMomentum
+ * before these two functions to reproduce the retail instruction ordering. */
+void startAnimation(Entity *entity, int32_t animId)
+{
+	int16_t *animData;
+	int16_t *instrPtr;
+	MomentumData *momentum;
+	PositionData *posData;
+	EntityAnim *anim;
+	ModelComponent *model;
+	VECTOR *location;
+	int32_t hasScale;
+	int32_t boneCount;
+	int32_t entityType;
+	register int32_t i;
+
+	{
+		int32_t loadedOffset;
+		int32_t *animTable;
+		register int32_t animOffset;
+
+		animTable = entity->animPtr;
+		loadedOffset = animTable[animId];
+		if ((animOffset = loadedOffset) == 0)
+			return;
+
+		animData = (int16_t *)((uint8_t *)animTable + animOffset);
+	}
+	instrPtr = animData;
+	posData = entity->posData;
+	anim = &entity->anim;
+
+	boneCount = DIGIMON_DATA[entity->type].boneCount & 0xff;
+	entityType = getEntityType(entity);
+	model = getEntityModelComponent(entity->type, entityType);
+
+	anim->textureX = (model->pixelPage - 0x10) * 64;
+	anim->textureY = model->pixelOffsetY + 0x100;
+	anim->loopEndFrame = 1;
+	anim->animId = animId;
+	anim->animFrame = 1;
+	anim->animFlag = 1;
+	anim->loopCount = 0;
+	momentum = anim->momentum;
+	anim->frameCount = *instrPtr++;
+
+	if (anim->frameCount & 0x8000)
+		hasScale = 1;
+	else
+		hasScale = 0;
+	anim->frameCount &= 0x7fff;
+	location = &posData->location;
+	anim->locX = location->vx << 15;
+	anim->locY = location->vy << 15;
+	anim->locZ = location->vz << 15;
+
+	resetMomentumData(momentum);
+	momentum++;
+	setupModelMatrix(posData);
+	posData++;
+
+	for (i = 1; i < boneCount; i++, momentum++, posData++) {
+		if (!hasScale) {
+			posData->scale.vx = 0x1000;
+			posData->scale.vy = 0x1000;
+			posData->scale.vz = 0x1000;
+		} else {
+			posData->scale.vx = *instrPtr++;
+			posData->scale.vy = *instrPtr++;
+			posData->scale.vz = *instrPtr++;
+		}
+		posData->rotation.vx = *instrPtr++;
+		posData->rotation.vy = *instrPtr++;
+		posData->rotation.vz = *instrPtr++;
+
+		posData->location.vx = *instrPtr++;
+		posData->location.vy = *instrPtr++;
+		posData->location.vz = *instrPtr++;
+
+		resetMomentumData(momentum);
+		setupModelMatrix(posData);
+	}
+
+	anim->animInstrPtr = instrPtr;
+}
+
+inline int32_t peekAnimationTextureHighByte(int16_t **instrPtr)
+{
+	return (**instrPtr & 0xff00) >> 8;
+}
+
+inline int32_t readAnimationTextureLowByte(int16_t **instrPtr)
+{
+	return *(*instrPtr)++ & 0xff;
+}
+
+void tickAnimation(Entity *entity)
+{
+	EntityAnim *anim;
+	MomentumData *momentum;
+	int16_t **instrPtrPtr;
+	int16_t *framePtr;
+	int32_t opcode;
+	int16_t *instrPtr;
+	int32_t instruction;
+	int32_t loopInstruction;
+
+	anim = &entity->anim;
+	momentum = anim->momentum;
+	instrPtrPtr = &anim->animInstrPtr;
+	framePtr = &anim->animFrame;
+
+	if (!(anim->animFlag & 1))
+		return;
+
+	tickMomentum(entity, momentum);
+
+	opcode = **instrPtrPtr;
+	instruction = opcode;
+	opcode &= 0x1000;
+	if (opcode) {
+		anim->loopCount = instruction;
+		(*instrPtrPtr)++;
+		anim->loopStart = *instrPtrPtr;
+		anim->loopEndFrame = **instrPtrPtr & 0xfff;
+	}
+	goto frame_update;
+
+loop:
+	instrPtr = *instrPtrPtr;
+	opcode = *instrPtr;
+	loopInstruction = opcode;
+	opcode &= 0xf000;
+
+	if (opcode == 0x4000)
+		goto op_4000;
+	if (opcode == 0x3000)
+		goto op_3000;
+	if (opcode == 0x2000)
+		goto op_2000;
+	if (opcode == 0x1000)
+		goto op_1000;
+	if (opcode != 0x0000)
+		goto op_end;
+
+	*instrPtrPtr = instrPtr + 1;
+	readMomentumInstructions(momentum, instrPtrPtr);
+	goto op_end;
+
+op_1000:
+	anim->loopCount = loopInstruction;
+	(*instrPtrPtr)++;
+	anim->loopStart = *instrPtrPtr;
+	goto op_end;
+
+op_2000:
+	if (anim->loopCount != 0xff)
+		anim->loopCount--;
+	if (anim->loopCount == 0) {
+		*instrPtrPtr += 2;
+	} else {
+		(*instrPtrPtr)++;
+		*framePtr = **instrPtrPtr;
+		*instrPtrPtr = anim->loopStart;
+	}
+	goto op_end;
+
+op_3000:
+	{
+		RECT rect;
+
+		*instrPtrPtr = instrPtr + 1;
+		rect.x = anim->textureX + ((**instrPtrPtr & 0xff00) >> 8);
+		rect.y = anim->textureY + (*(*instrPtrPtr)++ & 0xff);
+		rect.w = (**instrPtrPtr & 0xff00) >> 8;
+		rect.h = *(*instrPtrPtr)++ & 0xff;
+		/* Separate function bodies sequence the cursor accesses. The pinned
+		 * compiler evaluates the high-byte peek before the advancing read. */
+		MoveImage(&rect,
+			  anim->textureX + peekAnimationTextureHighByte(instrPtrPtr),
+			  anim->textureY + readAnimationTextureLowByte(instrPtrPtr));
+	}
+	goto op_end;
+
+op_4000:
+	*instrPtrPtr = instrPtr + 1;
+	opcode = instruction = **instrPtrPtr;
+	opcode &= 0xff00;
+	{
+		int16_t bankId;
+		int32_t soundInstruction;
+		int32_t vabId;
+
+		soundInstruction = instruction;
+		bankId = opcode >> 8;
+		if (entity->isOnScreen == 1) {
+			vabId = bankId != 4
+					? bankId
+					: ((DigimonEntity *)entity)->stats.current.vabId;
+			playSound(vabId, soundInstruction & 0xff);
+		}
+	}
+	(*instrPtrPtr)++;
+
+op_end:
+	anim->loopEndFrame = **instrPtrPtr & 0xfff;
+
+frame_update:
+	if (*framePtr == anim->loopEndFrame)
+		goto loop;
+
+	if (*framePtr == anim->frameCount)
+		anim->animFlag &= 0xfe;
+	else
+		(*framePtr)++;
+
+	animateEntityTexture(entity, anim);
 }
 
 void readMomentumInstructions(MomentumData *base, int16_t **instrPtr)
