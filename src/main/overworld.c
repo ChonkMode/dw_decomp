@@ -4,7 +4,9 @@
 #include <dw/evl.h>
 #include <dw/fish.h>
 #include <dw/item.h>
+#include <dw/move.h>
 #include <dw/std.h>
+#include <dw/sound.h>
 #include <dw/ui.h>
 
 typedef struct {
@@ -92,6 +94,7 @@ extern int16_t CAMERA_Y_PREVIOUS;
 extern int16_t MIST_X_OFFSETS[4];
 extern int16_t MIST_Y_OFFSETS[2];
 extern int8_t MENU_SUB_STATE;
+extern int16_t MAIN_D_80123E8C[5];
 extern char *MAIN_D_80124800[];
 extern int32_t TRIANGLE_MENU_STATE;
 extern int8_t MAIN_D_80123E8E[];
@@ -101,6 +104,10 @@ extern int32_t MAIN_D_80134D2C;
 extern int8_t MENU_STATE;
 extern int8_t MAIN_D_80134D36;
 extern int8_t MAIN_D_80134D37;
+extern int16_t MAIN_D_80134D38;
+extern int16_t MAIN_D_80134D3A;
+extern uint8_t MAIN_D_80134234[4];
+extern int32_t CHANGED_INPUT;
 typedef struct {
   uint8_t digimon;
   uint8_t moves;
@@ -115,6 +122,10 @@ extern PlayerTabs MAIN_D_801342A4;
 extern char *MAIN_D_801247B8[];
 extern uint8_t GAME_MENU_SPRITES[];
 extern uint8_t INVENTORY_POINTER;
+extern uint32_t POLLED_INPUT;
+extern uint32_t POLLED_INPUT_PREVIOUS;
+extern int32_t MAIN_D_80134D28;
+extern char *MOVE_NAMES[];
 
 void clearTextSubArea(RECT *area);
 int32_t isTriggerSet(int32_t triggerId);
@@ -137,8 +148,9 @@ void renderMenuTab(int32_t a, int32_t b, int32_t c);
 
 void setCameraFollowPlayer(void);
 void handleGameMenuSelection(int32_t selection);
-void createMenuBox(int32_t a, int32_t b, int32_t c, int32_t d, int32_t e,
-		   int32_t f, void (*tick)(void), void (*render)(void));
+int32_t createMenuBox(int32_t id, int16_t x, int16_t y, int16_t width,
+		      int16_t height, int8_t features, void (*tick)(void),
+		      void (*render)(void));
 void closeUIBoxIfOpen(int32_t arg);
 void getEntityScreenPos(Entity *entity, int32_t flag, int16_t *outPos);
 void initializeInventoryObject(void);
@@ -265,8 +277,11 @@ void setSleepDisabled(int32_t arg);
 void startFeedingItem(int32_t arg);
 void removeOneSelectedItem(void);
 void renderFeedingItem(int32_t arg);
-void getEquippedSlot(void);
+int32_t getEquippedSlot(void);
 void equipMove(void);
+int32_t isKeyDown(int32_t mask);
+uint8_t entityGetTechFromAnim(Entity *entity, int32_t anim);
+int32_t hasMove(int32_t moveId);
 
 static void *overworld_functions[] = {
 	equipMove,
@@ -918,7 +933,33 @@ void clearMapDigimon(void)
 	}
 }
 
-INCLUDE_ASM("asm/main/nonmatchings/overworld", removeMapEntities);
+void removeMapEntities(void)
+{
+	volatile int32_t unloaded[8];
+	Entity *entity;
+	int32_t *models;
+	int32_t i;
+	int32_t j;
+
+	for (j = 0; j < 8; j++) {
+		unloaded[j] = -1;
+	}
+	for (i = 0; i < 8; i++) {
+		entity = ENTITY_TABLE[i + 2];
+		if (entity != NULL) {
+			entity = ENTITY_TABLE[i + 2];
+			removeEntity(entity->type, i + 2);
+			ENTITY_TABLE[i + 2] = NULL;
+		}
+	}
+	for (i = 0; i < 8; i++) {
+		if (LOADED_DIGIMON_MODELS[i] != -1) {
+			thunkUnloadModel((models = LOADED_DIGIMON_MODELS)[i], 0);
+		}
+	}
+	initializeLoadedNPCModels();
+	clearMapAITable(-1);
+}
 
 void clearMapAITable(int32_t index)
 {
@@ -1509,7 +1550,27 @@ void setPartnerIdling(void)
 	startAnimation(&PARTNER_ENTITY.digimonEntity.entity, 0);
 }
 
-INCLUDE_ASM("asm/main/nonmatchings/overworld", addGameMenu);
+void addGameMenu(void)
+{
+	MAIN_D_80123E8C[0] = 1;
+	MAIN_D_80134D28 = 7;
+	GAME_MENU_SPRITES[0x4e] = 0;
+	MAIN_D_80134D2C = hasFishingRod();
+	if (MAIN_D_80134D2C != 0) {
+		MAIN_D_80134D28++;
+		if (MAIN_D_80134D2C == 1) {
+			GAME_MENU_SPRITES[0x4e] = 1;
+		}
+		MAIN_D_80123E8C[0] = 7;
+	}
+	if (PARTNER_PARA.condition & 1) {
+		GAME_MENU_SPRITES[0x42] = 0;
+	} else {
+		GAME_MENU_SPRITES[0x42] = 1;
+	}
+	TRIANGLE_MENU_STATE = 0;
+	addObject(0xfa4, 0, (void (*)(int32_t))tickTriangleMenu, NULL);
+}
 
 void tickTriangleMenu(void)
 {
@@ -1614,11 +1675,214 @@ INCLUDE_ASM("asm/main/nonmatchings/overworld", renderTriangleCursor);
 
 INCLUDE_ASM("asm/main/nonmatchings/overworld", renderRectPolyFT4);
 
-INCLUDE_ASM("asm/main/nonmatchings/overworld", tickGameMenu);
+void tickGameMenu(void)
+{
+	int32_t selection;
+	int32_t previousSelection;
+	register int32_t input;
+	int32_t pressed;
 
-INCLUDE_ASM("asm/main/nonmatchings/overworld", createMenuBox);
+	if (PARTNER_PARA.condition & 1) {
+		GAME_MENU_SPRITES[0x42] = 0;
+	}
+	selection = MAIN_D_80123E8C[0];
+	previousSelection = selection;
+	pressed = input = POLLED_INPUT & ~POLLED_INPUT_PREVIOUS;
+	if (pressed & 0x1000) {
+		if ((selection -= 3) <= 0) {
+			selection += ((MAIN_D_80134D28 + 1) / 3) * 3;
+		}
+		if (selection >= MAIN_D_80134D28) {
+			selection -= 3;
+		}
+	} else if (input & 0x4000) {
+		if ((selection += 3) >= MAIN_D_80134D28) {
+			selection -= ((MAIN_D_80134D28 + 1) / 3) * 3;
+		}
+		if (selection <= 0) {
+			selection += 3;
+		}
+	} else if (input & 0x8000) {
+		if ((selection -= 1) <= 0) {
+			selection = MAIN_D_80134D28 - 1;
+		}
+	} else if (input & 0x2000) {
+		if ((selection += 1) >= MAIN_D_80134D28) {
+			selection = 1;
+		}
+	}
+	if (selection != previousSelection) {
+		MAIN_D_80123E8C[0] = selection;
+		playSound(0, 2);
+	}
+	if (TRIANGLE_MENU_STATE == -1) {
+		if (isKeyDown(0x40) != 0) {
+			if (MAIN_D_80123E8E[MAIN_D_80123E8C[0] * 12] & 1) {
+				playSound(0, 4);
+			} else {
+				playSound(0, 3);
+			}
+			handleGameMenuSelection(MAIN_D_80123E8C[0]);
+		}
+		if ((isKeyDown(0x10) != 0) &&
+		    ((UI_BOX_DATA[0].state == 1) ||
+		     (UI_BOX_DATA[0].frame == 0))) {
+			playSound(0, 4);
+			closeTriangleMenu();
+			setTamerState(0);
+			setCameraFollowPlayer();
+			IS_IN_MENU = 0;
+			startGameTime();
+		}
+	}
+}
 
-INCLUDE_ASM("asm/main/nonmatchings/overworld", tickDigimonMenu);
+int32_t createMenuBox(int32_t id, int16_t x, int16_t y, int16_t width,
+		      int16_t height, int8_t features, void (*tick)(void),
+		      void (*render)(void))
+{
+	RECT finalPos;
+	RECT startPos;
+	int16_t entityPos[2];
+
+	if (UI_BOX_DATA[id].state == 1) {
+		return 1;
+	}
+	if (UI_BOX_DATA[id].frame == 0) {
+		finalPos.x = x;
+		finalPos.y = y;
+		finalPos.w = width;
+		finalPos.h = height;
+		getEntityScreenPos(ENTITY_TABLE[0], 1, entityPos);
+		startPos.x = entityPos[0] - 5;
+		startPos.y = entityPos[1] - 5;
+		startPos.w = 10;
+		startPos.h = 10;
+		createAnimatedUIBox(id, 1, features, &finalPos, &startPos,
+				    (TickFunction)tick, (RenderFunction)render);
+	}
+	return 0;
+}
+
+void tickDigimonMenu(void)
+{
+	int8_t equippedSlot;
+	int32_t slotResult;
+	int16_t previousX;
+	int16_t previousY;
+	int32_t i;
+
+	if ((MAIN_D_80134D36 != 1) ||
+	    ((MAIN_D_80134D36 == 1) && (MENU_STATE == 1))) {
+		if ((CHANGED_INPUT & 0x2000) && (MENU_STATE != 0)) {
+			MAIN_D_80134D36++;
+			if (MAIN_D_80134D36 >= 2) {
+				MAIN_D_80134D36 = 1;
+			} else {
+				MENU_STATE = 0;
+				MENU_SUB_STATE = 0;
+				playSound(0, 2);
+			}
+		}
+		if ((CHANGED_INPUT & 0x8000) && (MENU_STATE != 0)) {
+			MAIN_D_80134D36--;
+			if (MAIN_D_80134D36 < 0) {
+				MAIN_D_80134D36 = 0;
+			} else {
+				MENU_STATE = 0;
+				MENU_SUB_STATE = 0;
+				playSound(0, 2);
+			}
+		}
+		if (isKeyDown(0x10) != 0) {
+			if (MENU_STATE == 1) {
+				TRIANGLE_MENU_STATE = 4;
+			}
+			playSound(0, 4);
+		}
+		if ((MAIN_D_80134D36 == 1) && (isKeyDown(0x40) != 0)) {
+			if (MENU_STATE == 1) {
+				MENU_STATE = 2;
+			}
+			playSound(0, 3);
+		}
+	} else if (MENU_STATE == 6) {
+		if (isKeyDown(0x10) != 0) {
+			for (i = 0; i < 3; i++) {
+				if ((PARTNER_ENTITY.digimonEntity.stats.base.moves[i] !=
+				     0xff) &&
+				    (MOVE_DATA[entityGetTechFromAnim(
+					     &PARTNER_ENTITY.digimonEntity.entity,
+					     PARTNER_ENTITY.digimonEntity.stats.base
+						     .moves[i])]
+					     .power != 0)) {
+					break;
+				}
+			}
+			if (((PARTNER_ENTITY.digimonEntity.stats.base.moves[0] !=
+			      0xff) ||
+			     (PARTNER_ENTITY.digimonEntity.stats.base.moves[1] !=
+			      0xff) ||
+			     (PARTNER_ENTITY.digimonEntity.stats.base.moves[2] !=
+			      0xff)) &&
+			    (i != 3)) {
+				MENU_STATE = 4;
+			}
+			playSound(0, 4);
+		} else if (isKeyDown(0x80) != 0) {
+			MENU_STATE = 7;
+			MENU_SUB_STATE = 0;
+			playSound(0, 3);
+		} else if (isKeyDown(0x40) != 0) {
+			slotResult = getEquippedSlot();
+			equippedSlot = (int8_t)slotResult;
+			if ((int8_t)slotResult != -1) {
+				MAIN_D_80134234[equippedSlot] = 0xff;
+				PARTNER_ENTITY.digimonEntity.stats.base
+					.moves[equippedSlot] = 0xff;
+				playSound(0, 3);
+			} else {
+				equipMove();
+			}
+		}
+		previousY = MAIN_D_80134D38;
+		previousX = MAIN_D_80134D3A;
+		if (CHANGED_INPUT & 0x1000) {
+			MAIN_D_80134D38 -= 0xf;
+		}
+		if (CHANGED_INPUT & 0x4000) {
+			MAIN_D_80134D38 += 0xf;
+		}
+		if (CHANGED_INPUT & 0x8000) {
+			MAIN_D_80134D3A -= 0x12;
+		}
+		if (CHANGED_INPUT & 0x2000) {
+			MAIN_D_80134D3A += 0x12;
+		}
+		if (MAIN_D_80134D3A < 0x73) {
+			MAIN_D_80134D3A = 0x73;
+		}
+		if (MAIN_D_80134D3A >= 0xf2) {
+			MAIN_D_80134D3A = 0xf1;
+		}
+		if (MAIN_D_80134D38 < 0x6f) {
+			MAIN_D_80134D38 = 0x6f;
+		}
+		if (MAIN_D_80134D38 >= 0xca) {
+			MAIN_D_80134D38 = 0xc9;
+		}
+		if ((previousX != MAIN_D_80134D3A) ||
+		    (previousY != MAIN_D_80134D38)) {
+			playSound(0, 2);
+		}
+	} else if ((MENU_STATE == 8) && (isKeyDown(0x10) != 0)) {
+		MENU_STATE = 9;
+		MENU_SUB_STATE = 0;
+		playSound(0, 4);
+	}
+	TAMER_ENTITY.entity.isOnScreen = 0;
+	PARTNER_ENTITY.digimonEntity.entity.isOnScreen = 0;
+}
 
 void renderDigimonMenu(void)
 {
@@ -1792,6 +2056,126 @@ void renderFeedingItem(int32_t arg)
 	renderOverworldItem(&TAMER_ITEM.worldItem);
 }
 
-INCLUDE_ASM("asm/main/nonmatchings/overworld", getEquippedSlot);
+int32_t getEquippedSlot(void)
+{
+	uint8_t moveId;
+	uint8_t column;
+	uint8_t row;
+	int32_t slot;
 
-INCLUDE_ASM("asm/main/nonmatchings/overworld", equipMove);
+	column = (MAIN_D_80134D3A - 0x73) / 18;
+	row = (MAIN_D_80134D38 - 0x6f) / 15;
+	if (row == 1) {
+		row = 5;
+	} else if (row == 2) {
+		row = 1;
+	} else if (row == 3) {
+		row = 4;
+	} else if (row == 4) {
+		row = 2;
+	} else if (row == 5) {
+		row = 3;
+	}
+	moveId = column + row * 8;
+	if (moveId >= 0x30) {
+		moveId++;
+	}
+	for (slot = 0; slot < 3; slot++) {
+		if ((moveId == 0x2c) && (MAIN_D_80134234[slot] == 0x30)) {
+			return (int8_t)slot;
+		}
+		if ((moveId == 0x37) && (MAIN_D_80134234[slot] == 0x39)) {
+			return (int8_t)slot;
+		}
+		if (MAIN_D_80134234[slot] == moveId) {
+			return (int8_t)slot;
+		}
+	}
+	return -1;
+}
+
+void equipMove(void)
+{
+	RECT textArea;
+	uint8_t column;
+	uint8_t row;
+	uint8_t moveId;
+	int32_t slot;
+	int32_t animation;
+	int32_t textY;
+
+	column = (MAIN_D_80134D3A - 0x73) / 18;
+	row = (MAIN_D_80134D38 - 0x6f) / 15;
+	if (row == 1) {
+		row = 5;
+	} else if (row == 2) {
+		row = 1;
+	} else if (row == 3) {
+		row = 4;
+	} else if (row == 4) {
+		row = 2;
+	} else if (row == 5) {
+		row = 3;
+	}
+	moveId = column + row * 8;
+	if (row == 6) {
+		moveId++;
+	}
+	if (hasMove(moveId) == 0) {
+		playSound(0, 4);
+		return;
+	}
+
+	for (animation = 0; animation < 16; animation++) {
+		if (moveId == 0x2c) {
+			if (DIGIMON_DATA[PARTNER_ENTITY.digimonEntity.entity.type]
+				    .moves[animation] == 0x2c) {
+				break;
+			}
+			if (DIGIMON_DATA[PARTNER_ENTITY.digimonEntity.entity.type]
+				    .moves[animation] == 0x30) {
+				moveId = 0x30;
+				break;
+			}
+		}
+		if (moveId == 0x37) {
+			if (DIGIMON_DATA[PARTNER_ENTITY.digimonEntity.entity.type]
+				    .moves[animation] == 0x37) {
+				break;
+			}
+			if (DIGIMON_DATA[PARTNER_ENTITY.digimonEntity.entity.type]
+				    .moves[animation] == 0x39) {
+				moveId = 0x39;
+				break;
+			}
+		}
+		if (moveId ==
+		    DIGIMON_DATA[PARTNER_ENTITY.digimonEntity.entity.type]
+			    .moves[animation]) {
+			break;
+		}
+		if (animation == 15) {
+			playSound(0, 4);
+			return;
+		}
+	}
+
+	for (slot = 0; slot < 3; slot++) {
+		if (MAIN_D_80134234[slot] == 0xff) {
+			break;
+		}
+		if (slot == 2) {
+			playSound(0, 4);
+			return;
+		}
+	}
+	MAIN_D_80134234[slot] = moveId;
+	PARTNER_ENTITY.digimonEntity.stats.base.moves[slot] = animation + 0x2e;
+	textArea.x = 0;
+	textArea.y = textY = slot * 12 + 0x18;
+	textArea.w = 0x84;
+	textArea.h = 0xc;
+	clearTextSubArea(&textArea);
+	drawString(MOVE_NAMES[(uint8_t)moveId], 0, textY);
+	playSound(0, 3);
+}
