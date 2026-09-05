@@ -630,7 +630,76 @@ void renderMapOverlays(LocalMapObjectInstance *instances, int32_t screenX,
 
 INCLUDE_ASM("asm/main/nonmatchings/overworld", renderMist);
 
-INCLUDE_ASM("asm/main/nonmatchings/overworld", buildSnowflakePrim);
+void buildSnowflakePrim(POLY_FT4 *prim, LocalMapObjectInstance *inst,
+			LocalMapObject *obj)
+{
+	int32_t randomRange;
+	int32_t fallSpeed;
+	int8_t randomValue;
+	int8_t chance;
+	int8_t horizontalMovement;
+
+	if ((inst->animSprites[0] == 0) || (inst->animSprites[0] == 3) ||
+	    (inst->animSprites[0] == 4)) {
+		randomRange = 6;
+		fallSpeed = 3;
+	}
+	if ((inst->animSprites[0] == 1) || (inst->animSprites[0] == 5) ||
+	    (inst->animSprites[0] == 6)) {
+		randomRange = 2;
+		fallSpeed = 1;
+	}
+	if (inst->animSprites[0] == 2) {
+		randomRange = 4;
+		fallSpeed = 10;
+	}
+
+	randomValue = horizontalMovement = random(randomRange);
+	if ((randomValue > (randomRange / 2)) != 0) {
+		horizontalMovement = -(horizontalMovement % (randomRange / 2));
+	}
+
+	if ((inst->animSprites[0] == 0) || (inst->animSprites[0] == 3) ||
+	    (inst->animSprites[0] == 4)) {
+		if ((CURRENT_FRAME % 3) == 0) {
+			inst->x += horizontalMovement;
+		}
+		if (inst->x >= 0x141) {
+			inst->x = 0;
+		}
+		if (inst->x < 0) {
+			inst->x = 0x140;
+		}
+	}
+
+	setPosDataPolyFT4(prim, inst->x - 0xa0 + horizontalMovement,
+			   inst->y - 0x78, obj->width, obj->height);
+	prim->r0 = 0x80;
+	prim->g0 = 0x80;
+	prim->b0 = 0x80;
+	setUVDataPolyFT4(prim, obj->texX % 256, obj->texY % 256,
+			 obj->width - 1, obj->height - 1);
+	prim->tpage = GetTPage(0, obj->transparency,
+			       (obj->texX / 256 << 6) + 0x180, 0);
+	prim->clut = GetClut(obj->clut * 16, 0x1e6);
+
+	inst->y = inst->y + fallSpeed;
+	if ((inst->y >= 0x83) && (inst->animSprites[0] != 2)) {
+		chance = random(10);
+		if ((chance < 2) && (inst->currentFrame == 0)) {
+			inst->currentFrame++;
+			inst->timer = 0;
+		}
+		if ((inst->currentFrame >= 2) &&
+		    (inst->animSprites[inst->currentFrame + 1] == -1)) {
+			inst->currentFrame = 0;
+			inst->y = 0;
+		}
+	}
+	if (inst->y >= 0xf1) {
+		inst->y = 0;
+	}
+}
 
 void buildMapOverlayPrim(POLY_FT4 *prim, LocalMapObjectInstance *inst,
 			 LocalMapObject *obj, int32_t arg3, int16_t arg4,
@@ -1503,7 +1572,49 @@ void setLoopCountToOne(uint32_t scriptId)
 	entity->anim.loopCount = 1;
 }
 
-INCLUDE_ASM("asm/main/nonmatchings/overworld", resetEntityOrigin);
+void resetEntityOrigin(int32_t scriptId)
+{
+	NPCEntity *npc;
+	VECTOR *waypoints;
+	int16_t deltaX;
+	int16_t deltaZ;
+	int32_t entityIndex;
+	int32_t i;
+	int32_t j;
+
+	npc = NPC_ENTITIES;
+	for (i = 0; i < 8; i++) {
+		entityIndex = i + 2;
+		if (ENTITY_TABLE[entityIndex] == NULL) {
+			npc++;
+			continue;
+		}
+		if (npc->scriptId == scriptId) {
+			break;
+		}
+		npc++;
+	}
+	deltaX = npc->digimonEntity.entity.posData->location.vx -
+		 MAP_DIGIMON_TABLE[i].posX;
+	deltaZ = npc->digimonEntity.entity.posData->location.vz -
+		 MAP_DIGIMON_TABLE[i].posZ;
+	MAP_DIGIMON_TABLE[i].posX =
+		npc->digimonEntity.entity.posData->location.vx;
+	MAP_DIGIMON_TABLE[i].posZ =
+		npc->digimonEntity.entity.posData->location.vz;
+	waypoints = MAP_DIGIMON_TABLE[i].waypoints;
+	for (j = 0; j < 8; j++) {
+		if (*(int16_t *)((uint8_t *)(j * 2) +
+				   (uint32_t)waypoints + 0x80) != 0) {
+			if (*(int16_t *)((uint8_t *)(j * 2) +
+					   (uint32_t)waypoints + 0x80) == -1) {
+				break;
+			}
+			waypoints[j].vx += deltaX;
+			waypoints[j].vz += deltaZ;
+		}
+	}
+}
 
 void setMovementEnabled(int32_t id, int32_t enabled)
 {
