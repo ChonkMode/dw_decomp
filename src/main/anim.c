@@ -1,7 +1,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <dw/clock.h>
 #include <dw/entity.h>
+#include <dw/params.h>
 #include <dw/types.h>
 
 #include "common.h"
@@ -15,11 +17,11 @@ typedef struct {
 void calculatePosMatrix(PositionData *posData, int32_t unused1,
 			int32_t unused2, int32_t translate);
 void resetMomentumData(MomentumData *momentum);
-void animateEntityTexture();
+void animateEntityTexture(Entity *entity, EntityAnim *anim);
 void setupModelMatrix(PositionData *posData);
-void startAnimation();
-void tickAnimation();
-void tickMomentum();
+void startAnimation(Entity *entity, int32_t animId);
+void tickAnimation(Entity *entity);
+void tickMomentum(Entity *entity, MomentumData *momentumBase);
 void readMomentumInstructions(MomentumData *momentum, int16_t **instrPtr);
 void readMomentumInstruction(int16_t *delta, int16_t *reload1,
 			     int16_t *subDelta, int16_t *reload2,
@@ -27,7 +29,7 @@ void readMomentumInstruction(int16_t *delta, int16_t *reload1,
 			     int16_t *divisor);
 int32_t applyMomentum(int32_t base, int16_t reload, int16_t delta,
 		      int16_t *counter, int8_t step, int32_t offset);
-void applyRootMomentum();
+void applyRootMomentum(MomentumData *momentum, Entity *entity);
 
 void *anim_order_anchor[] = {
 	applyRootMomentum,
@@ -73,7 +75,63 @@ void resetMomentumData(MomentumData *momentum)
 	memcpy(&momentum->subDelta[0], &zero, 6);
 }
 
-INCLUDE_ASM("asm/main/nonmatchings/anim", animateEntityTexture);
+void animateEntityTexture(Entity *entity, EntityAnim *anim)
+{
+	int32_t type;
+	int16_t texX;
+	int16_t frame;
+	RECT rect;
+
+	type = entity->type;
+	if (type == 0x7f)
+		goto tex_2c;
+	if (type == 0x45)
+		goto tex_10;
+	if (type == 0x65)
+		goto tex_10;
+	if (type == 0x8f)
+		goto tex_28;
+	if (type == 0x6a)
+		goto tex_28;
+	if (type == 0x15)
+		goto tex_28;
+	if (type == 0x68)
+		goto tex_1e;
+	if (type == 0x85)
+		goto tex_1e;
+	if (type != 0x09)
+		return;
+
+tex_1e:
+	texX = 0x1e;
+	goto tex_done;
+tex_28:
+	texX = 0x28;
+	goto tex_done;
+tex_10:
+	texX = 0x10;
+	goto tex_done;
+tex_2c:
+	texX = 0x2c;
+
+tex_done:
+	if (PLAYTIME_FRAMES % 2)
+		return;
+
+	if (PLAYTIME_FRAMES % 6 == 0) {
+		frame = 2;
+	} else if (PLAYTIME_FRAMES % 4 == 0) {
+		frame = 1;
+	} else {
+		frame = 0;
+	}
+
+	rect.x = anim->textureX;
+	rect.y = anim->textureY + 0x20 + frame * 0x20;
+	rect.w = texX;
+	rect.h = 0x20;
+	MoveImage(&rect, anim->textureX, anim->textureY);
+}
 
 void setupModelMatrix(PositionData *posData)
 {
@@ -90,9 +148,179 @@ INCLUDE_ASM("asm/main/nonmatchings/anim", startAnimation);
 
 INCLUDE_ASM("asm/main/nonmatchings/anim", tickAnimation);
 
-INCLUDE_ASM("asm/main/nonmatchings/anim", tickMomentum);
+inline int16_t *getAnimInt16Ptr(uint8_t *ptr)
+{
+	return (int16_t *)ptr;
+}
 
-INCLUDE_ASM("asm/main/nonmatchings/anim", readMomentumInstructions);
+void tickMomentum(Entity *entity, MomentumData *momentumBase)
+{
+	int32_t boneCount;
+	PositionData *posData;
+	int16_t *delta;
+	int32_t updateScale;
+	int32_t elemIndex;
+	int32_t value;
+	int32_t updateRot;
+	int32_t updateLoc;
+	struct {
+		long *scale;
+		long *location;
+		int16_t *subDelta;
+		int16_t *delta;
+		int16_t *subScale;
+		int8_t *subValue;
+	} volatile pointers;
+	int16_t *scale1;
+	int16_t *subDelta;
+	int16_t *subScale;
+	int8_t *subValue;
+	int32_t boneIndex;
+	int32_t scaleOffset;
+	int32_t rotOffset;
+	int16_t *rotation;
+
+	posData = entity->posData;
+	boneCount = DIGIMON_DATA[entity->type].boneCount;
+	pointers.scale = &posData->scale.vx;
+	pointers.location = &posData->location.vx;
+	rotation = &posData->rotation.vx;
+	pointers.subDelta = &momentumBase->subDelta[0];
+	pointers.delta = &momentumBase->delta[0];
+	pointers.subScale = &momentumBase->subScale[0];
+	pointers.subValue = &momentumBase->subValue[0];
+
+	for (boneIndex = 0; boneIndex < boneCount;) {
+		updateLoc = 0;
+		updateRot = 0;
+		updateScale = 0;
+
+		scale1 = &momentumBase->scale1[0];
+		delta = pointers.delta;
+		subDelta = pointers.subDelta;
+		subScale = pointers.subScale;
+		subValue = pointers.subValue;
+		elemIndex = 0;
+		scaleOffset = 0;
+		rotOffset = 0;
+
+		for (; elemIndex < 9;) {
+			value = *delta;
+			if (value == 0 && *subDelta == 0)
+				goto advance;
+
+			if (elemIndex < 3) {
+				updateScale = 1;
+				*(long *)((uint8_t *)pointers.scale + scaleOffset) =
+					applyMomentum(
+						*delta, *scale1, *subDelta, subScale,
+						*subValue,
+						*(long *)((uint8_t *)pointers.scale +
+							 scaleOffset));
+			} else if (elemIndex < 6) {
+				updateRot = 1;
+				*getAnimInt16Ptr((uint8_t *)rotation + rotOffset - 6) =
+					(int16_t)applyMomentum(
+						*delta, *scale1, *subDelta, subScale,
+						*subValue,
+						*getAnimInt16Ptr((uint8_t *)rotation +
+								    rotOffset - 6));
+			} else {
+				if (boneIndex == 0)
+					break;
+
+				updateLoc = 1;
+				*(long *)((uint8_t *)((uintptr_t)scaleOffset +
+							  (uintptr_t)pointers.location) -
+					  24) =
+					applyMomentum(
+						*delta, *scale1, *subDelta, subScale,
+						*subValue,
+						*(long *)((uint8_t *)pointers.location +
+							    scaleOffset - 24));
+			}
+
+		advance:
+			scale1++;
+			subDelta++;
+			delta++;
+			subScale++;
+			subValue++;
+			elemIndex++;
+			rotOffset += 2;
+			scaleOffset += 4;
+		}
+
+		if (boneIndex == 0) {
+			calculatePosMatrix(posData, 1, 1, 0);
+			applyRootMomentum(momentumBase, entity);
+			setupModelMatrix(posData);
+		} else {
+			calculatePosMatrix(posData, updateScale, updateRot,
+					   updateLoc);
+		}
+
+		boneIndex++;
+		momentumBase++;
+		rotation = getAnimInt16Ptr((uint8_t *)rotation +
+					       sizeof(PositionData));
+		pointers.subValue = (int8_t *)((uint8_t *)pointers.subValue +
+						      sizeof(MomentumData));
+		pointers.subScale =
+			(int16_t *)((uint8_t *)pointers.subScale +
+				    sizeof(MomentumData));
+		pointers.delta = (int16_t *)((uint8_t *)pointers.delta +
+						 sizeof(MomentumData));
+		pointers.subDelta =
+			(int16_t *)((uint8_t *)pointers.subDelta +
+				    sizeof(MomentumData));
+		posData++;
+		pointers.location =
+			(long *)((uint8_t *)pointers.location +
+				 sizeof(PositionData));
+		pointers.scale = (long *)((uint8_t *)pointers.scale +
+					 sizeof(PositionData));
+	}
+}
+
+void readMomentumInstructions(MomentumData *base, int16_t **instrPtr)
+{
+	MomentumData *momentum;
+	volatile int32_t instruction;
+	int16_t divisor;
+	int16_t *reload1;
+	int16_t *subDelta;
+	int16_t *delta;
+	int16_t *reload2;
+	int8_t *sign;
+	uint16_t flag;
+	int32_t i;
+
+	goto check;
+	do {
+		instruction = *(*instrPtr)++;
+		momentum = &base[instruction & 0x3f];
+		divisor = *(*instrPtr)++;
+
+		subDelta = &momentum->subDelta[0];
+		reload1 = &momentum->scale1[0];
+		delta = &momentum->delta[0];
+		reload2 = &momentum->subScale[0];
+		sign = &momentum->subValue[0];
+
+		flag = 0x4000;
+		for (i = 0; i < 9; i++) {
+			if (instruction & flag) {
+				readMomentumInstruction(delta + i, reload1 + i,
+							subDelta + i, reload2 + i,
+							sign + i, instrPtr, &divisor);
+			}
+			flag = flag >> 1;
+		}
+	check:
+		;
+	} while (**instrPtr & 0x8000);
+}
 
 void readMomentumInstruction(int16_t *delta, int16_t *reload1,
 			     int16_t *subDelta, int16_t *reload2,
@@ -136,4 +364,69 @@ int32_t applyMomentum(int32_t base, int16_t reload, int16_t delta,
 	return offset + base;
 }
 
-INCLUDE_ASM("asm/main/nonmatchings/anim", applyRootMomentum);
+void applyRootMomentum(MomentumData *momentum, Entity *entity)
+{
+	int32_t i;
+	int16_t *scale1;
+	int16_t *subDelta;
+	int16_t *delta;
+	int16_t *subScale;
+	int8_t *subValue;
+	VECTOR input;
+	VECTOR result;
+	int32_t base[3];
+	EntityAnim *anim;
+	PositionData *posData;
+
+	scale1 = &momentum->scale1[6];
+	subDelta = &momentum->subDelta[6];
+	delta = &momentum->delta[6];
+	subScale = &momentum->subScale[6];
+	anim = &entity->anim;
+	subValue = &momentum->subValue[6];
+	i = 0;
+
+	for (; i < 3; i++, delta++, subScale++, subDelta++) {
+		if (i == 0) {
+			if (anim->animId == 0x24 || anim->animId == 0x23) {
+				base[0] = 0;
+				continue;
+			}
+		}
+
+		if (*subDelta != 0) {
+			*subScale -= *subDelta;
+			if (*subScale <= 0) {
+				base[i] = (*delta + subValue[i]) << 15;
+				*subScale += scale1[i];
+				continue;
+			}
+		}
+		base[i] = *delta << 15;
+	}
+
+	if (!(entity->anim.animFlag & 2)) {
+		posData = entity->posData;
+		input.vx = base[0];
+		input.vy = base[1];
+		input.vz = base[2];
+		ApplyMatrixLV(&posData->posMatrix.coord, &input, &result);
+
+		if ((entity->anim.animFlag & 8) && result.vz < 0)
+			result.vz = 0;
+		if ((entity->anim.animFlag & 0x10) && result.vx < 0)
+			result.vx = 0;
+		if ((entity->anim.animFlag & 0x20) && result.vz > 0)
+			result.vz = 0;
+		if ((entity->anim.animFlag & 0x40) && result.vx > 0)
+			result.vx = 0;
+
+		anim->locX = anim->locX + result.vx;
+		anim->locY = anim->locY + result.vy;
+		anim->locZ = anim->locZ + result.vz;
+
+		posData->location.vx = anim->locX >> 15;
+		posData->location.vy = anim->locY >> 15;
+		posData->location.vz = anim->locZ >> 15;
+	}
+}
