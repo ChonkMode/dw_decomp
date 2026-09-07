@@ -122,6 +122,17 @@ uint8_t MAIN_D_8012341C[16] = {
 char MAIN_D_8012342C[16] = "ETCHI\\EFEDAT.EFE";
 uint32_t MAIN_D_8012343C[4] = {0};
 
+static void *efe_data_order[] = {
+	MAIN_D_8012343C,
+	MAIN_D_8012342C,
+	MAIN_D_8012341C,
+	MAIN_D_80123400,
+	MAIN_D_801233DC,
+	MAIN_D_801233CC,
+	&CLOUD_FX_SPRITE,
+	MAIN_D_80123370,
+};
+
 void setShortWithStride();
 void getDrawingOffsetCopy(int32_t *x, int32_t *y);
 int32_t isTamerOnScreen(void);

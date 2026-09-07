@@ -421,29 +421,14 @@ SECTIONS
         . = ALIGN(., 4);
         build/asm/main/data/partner_impl.data.s.o(.data.*)
         . = ALIGN(., 4);
-        build/src/main/tamer.c.o(".data.MAIN_D_80122D68")
-        build/src/main/tamer.c.o(".data.MAIN_D_80122D80")
-        build/src/main/tamer.c.o(".data.MAIN_D_80122D94")
-        build/src/main/tamer.c.o(".data.MAIN_D_80122DAC")
-        build/src/main/tamer.c.o(".data.MAIN_D_80122DC8")
-        build/src/main/tamer.c.o(".data.MAIN_D_80122DDC")
-        build/src/main/tamer.c.o(".data.MAIN_D_80122DF4")
-        build/src/main/partner.c.o(".data.TOILET_DATA")
-        build/src/main/map_object.c.o(".data.DOOR_MAPDATA")
-        build/src/main/efe.c.o(".data.MAIN_D_80123370")
-        build/src/main/efe.c.o(".data.CLOUD_FX_SPRITE")
-        build/src/main/efe.c.o(".data.MAIN_D_801233CC")
-        build/src/main/efe.c.o(".data.MAIN_D_801233DC")
-        build/src/main/efe.c.o(".data.MAIN_D_80123400")
-        build/src/main/efe.c.o(".data.MAIN_D_8012341C")
-        build/src/main/efe.c.o(".data.MAIN_D_8012342C")
-        build/src/main/efe.c.o(".data.MAIN_D_8012343C")
+        build/src/main/tamer.c.o(.data.*)
+        build/src/main/toilet_data.c.o(.data.*)
+        build/src/main/door_mapdata.c.o(.data.*)
+        build/src/main/efe.c.o(.data.*)
         . = ALIGN(., 4);
         build/src/main/fade.c.o(.data.*)
         . = ALIGN(., 4);
         build/src/main/aabb.c.o(.data.*)
-        . = ALIGN(., 4);
-        build/src/main/efe.c.o(.data.*)
         . = ALIGN(., 4);
         KEEP(build/asm/main/data/psyq/libcd.data.s.o(.data.*))
         . = ALIGN(., 4);

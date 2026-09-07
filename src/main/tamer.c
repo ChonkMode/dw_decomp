@@ -34,6 +34,16 @@ uint8_t MAIN_D_80122DC8[20] = "Congratulations!";
 uint8_t MAIN_D_80122DDC[24] = "To recognize your great";
 uint8_t MAIN_D_80122DF4[28] = "recors, they sent a Medal!";
 
+static void *tamer_data_order[] = {
+	MAIN_D_80122DF4,
+	MAIN_D_80122DDC,
+	MAIN_D_80122DC8,
+	MAIN_D_80122DAC,
+	MAIN_D_80122D94,
+	MAIN_D_80122D80,
+	MAIN_D_80122D68,
+};
+
 RECT MAIN_D_801341F4 = {0, 12, 256, 200};
 uint8_t MAIN_D_801341FC[8] = "Woah!";
 RECT MAIN_D_80134204 = {0, 12, 256, 200};
