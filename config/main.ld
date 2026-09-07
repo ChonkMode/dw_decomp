@@ -104,6 +104,8 @@ SECTIONS
         . = ALIGN(., 4);
         build/src/main/utils.c.o(.text.*)
         . = ALIGN(., 4);
+        build/src/main/utils2.c.o(.text.*)
+        . = ALIGN(., 4);
         build/src/main/tournament.c.o(.text.*)
         . = ALIGN(., 4);
         build/src/main/evl.c.o(.text.*)
@@ -266,7 +268,7 @@ SECTIONS
         . = ALIGN(., 4);
         build/src/main/aabb.c.o(.rodata.*)
         . = ALIGN(., 4);
-        build/asm/main/data/efe.rodata.s.o(.rodata.*)
+        build/src/main/efe.c.o(.rodata.*)
         . = ALIGN(., 4);
         KEEP(build/asm/main/data/psyq/libcd.rodata.s.o(.rodata.*))
         . = ALIGN(., 4);
@@ -541,7 +543,7 @@ SECTIONS
         . = ALIGN(., 4);
         build/asm/main/data/ui.sdata.s.o(.sdata.*)
         . = ALIGN(., 4);
-        build/asm/main/data/item.sdata.s.o(.sdata.*)
+        build/src/main/item.c.o(.sdata.*)
         . = ALIGN(., 4);
         build/src/main/sound.c.o(.sdata.*)
         . = ALIGN(., 4);
@@ -549,7 +551,7 @@ SECTIONS
         . = ALIGN(., 4);
         build/asm/main/data/inventory.sdata.s.o(.sdata.*)
         . = ALIGN(., 4);
-        build/asm/main/data/clock.sdata.s.o(.sdata.*)
+        build/src/main/clock.c.o(.sdata.*)
         . = ALIGN(., 4);
         build/asm/main/data/entity_text.sdata.s.o(.sdata.*)
         . = ALIGN(., 4);
@@ -630,6 +632,10 @@ SECTIONS
         build/src/main/world_object.c.o(.bss.*)
         . = ALIGN(., 4);
         KEEP(build/build/generated/unk_0x80137A24.bss.s.o(.bss.*))
+        . = ALIGN(., 4);
+        KEEP(build/src/main/item.c.o(.bss.*))
+        . = ALIGN(., 4);
+        KEEP(build/build/generated/unk_0x8013D590.bss.s.o(.bss.*))
         . = ALIGN(., 4);
         build/src/main/sound.c.o(.bss.*)
         . = ALIGN(., 4);

@@ -73,6 +73,7 @@ MAIN_BSS := \
 	$(BUILDDIR)/generated/libgte.bss.s \
 	$(BUILDDIR)/generated/model.bss.s \
 	$(BUILDDIR)/generated/unk_0x80137A24.bss.s \
+	$(BUILDDIR)/generated/unk_0x8013D590.bss.s \
 	$(BUILDDIR)/generated/unk_0x8014DBEC.bss.s \
 	$(BUILDDIR)/generated/unk_0x80154F80.bss.s \
 	$(BUILDDIR)/generated/butterfly.bss.s \
@@ -145,6 +146,7 @@ MAIN_SRC := \
 	src/main/tournament.c \
 	src/main/ui.c \
 	src/main/utils.c \
+	src/main/utils2.c \
 	src/main/vs.c \
 	src/main/world_object.c
 

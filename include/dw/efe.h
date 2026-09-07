@@ -5,6 +5,7 @@
 #include <libgte.h>
 
 #include <dw/entity.h>
+#include <dw/graphics.h>
 #include <dw/model.h>
 #include <dw/types.h>
 
@@ -21,8 +22,14 @@
 #define EFE_SCRATCH ((EfeScratch *)getScratchAddr(0))
 
 typedef struct {
-	int32_t position[3];
-	int32_t rotation[3];
+	int32_t vx;
+	int32_t vy;
+	int32_t vz;
+} EfeVector;
+
+typedef struct {
+	EfeVector position;
+	EfeVector rotation;
 } EfeTransform;
 
 typedef struct {
@@ -36,6 +43,24 @@ typedef struct {
 	int16_t positionY;
 	int16_t positionZ;
 } EfeBoneOffset;
+
+typedef struct {
+	int16_t distance;
+	int16_t velocity;
+	SVECTOR direction;
+	SVECTOR position;
+} EfeParticle;
+
+typedef struct {
+	EfeInstance *transform;
+	int16_t frames;
+	int16_t startOffset;
+	int16_t startVelocity;
+	int16_t acceleration;
+	RGB8 color;
+	int8_t type;
+	EfeParticle particles[21];
+} EfeParticleEffect;
 
 typedef struct {
 	int16_t *inst;
@@ -75,13 +100,47 @@ typedef struct {
 	ModelComponent *model;
 } EfeLoad;
 
+typedef struct {
+	SVECTOR worldPos;
+	int16_t progress;
+	int16_t tMax;
+	int16_t mode;
+	int16_t fixedDepth;
+	int16_t redMin;
+	int16_t greenMin;
+	int16_t blueMin;
+	int16_t redMax;
+	int16_t greenMax;
+	int16_t blueMax;
+	int32_t scaleMin;
+	int32_t scaleMax;
+	int16_t offsetX;
+	int16_t offsetY;
+} EfeFlashData;
+
+typedef struct {
+	DVECTOR screenPos;
+	int16_t depth;
+	int16_t pad;
+	int32_t scale;
+	uint16_t sizeX;
+	uint16_t sizeY;
+	uint16_t tpage;
+	uint8_t uBase;
+	uint8_t vBase;
+	uint16_t clut;
+	RGB8 color;
+	uint8_t colorScale;
+} ParticleFlashData;
+
+extern EfeFlashData *EFE_FLASH_DATA;
 extern int32_t *EFE_DATA_STACK;
 extern int32_t EFE_SCRIPT_MEM1_DATA[];
 extern int16_t EFE_LOADED_MOVE_DATA[];
 extern EfeInstance *EFE_INSTANCE;
 extern int32_t EFE_PARENT_INSTANCE;
 
-extern char *MAIN_D_80134CCC;
+extern EfeParticleEffect *MAIN_D_80134CCC;
 extern int32_t MAIN_D_80134CD0;
 extern int32_t MAIN_D_80134CD4;
 extern int32_t MAIN_D_80134CD8;

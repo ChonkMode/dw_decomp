@@ -1,4 +1,5 @@
 #include <string.h>
+#include <dw/item.h>
 
 #include <libcd.h>
 
@@ -7,7 +8,6 @@
 #include <dw/script.h>
 #include <dw/ui.h>
 
-void setInventorySize(uint8_t v);
 
 static void *script_instr10_functions[] = {
 	scriptInstruction10to27,
@@ -121,7 +121,7 @@ void scriptInstruction10to27(int32_t op)
 		break;
 	case 0x21:
 		pollNextScriptUByte(&pstat);
-		writePStat(pstat, MAIN_D_80134FFE);
+		writePStat(pstat, CURRENT_MAP_ID);
 		break;
 	case 0x22:
 		pollNextScriptUByte(&pstat);
