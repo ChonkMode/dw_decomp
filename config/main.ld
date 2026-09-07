@@ -44,7 +44,48 @@ SECTIONS
         . = ALIGN(., 4);
         build/src/main/partner_impl.c.o(.text.*)
         . = ALIGN(., 4);
-        build/src/main/tamer.c.o(.text.*)
+        build/src/main/tamer.c.o(".text.initializeTamer")
+        build/src/main/tamer.c.o(".text.tickTamer")
+        build/src/main/tamer.c.o(".text.loadMapEntities")
+        build/src/main/tamer.c.o(".text.setupTamerOnWarp")
+        build/src/main/tamer.c.o(".text.tickTamerOverworld")
+        build/src/main/tamer.c.o(".text.tickWalkingState")
+        build/src/main/tamer.c.o(".text.setTamerState")
+        build/src/main/tamer.c.o(".text.tickChangeMap")
+        build/src/main/tamer.c.o(".text.tickPickupItem")
+        build/src/main/tamer.c.o(".text.tickTakeChest")
+        build/src/main/tamer.c.o(".text.tickIdle")
+        build/src/main/tamer.c.o(".text.tickTraining")
+        build/src/main/tamer.c.o(".text.tickPraiseScold")
+        build/src/main/tamer.c.o(".text.tickOpening")
+        build/src/main/tamer.c.o(".text.tickEnding")
+        build/src/main/tamer.c.o(".text.tickSicknessLostLife")
+        build/src/main/tamer.c.o(".text.tickMachinedramonSpawn")
+        build/src/main/tamer.c.o(".text.tickBattleLostLife")
+        build/src/main/tamer.c.o(".text.tickAwardSomething")
+        build/src/main/tamer.c.o(".text.getMapRotation")
+        build/src/main/tamer.c.o(".text.setTamerDirection")
+        build/src/main/tamer.c.o(".text.checkItemPickup")
+        build/src/main/tamer.c.o(".text.checkMapInteraction")
+        build/src/main/tamer.c.o(".text.checkMedalConditions")
+        build/src/main/tamer.c.o(".text.checkPendingAwards")
+        build/src/main/tamer.c.o(".text.renderItemPickupTextbox")
+        build/src/main/tamer.c.o(".text.startBattle")
+        build/src/main/tamer.c.o(".text.advanceBattleTime")
+        build/src/main/tamer.c.o(".text.setFullState")
+        build/src/main/tamer.c.o(".text.getTamerState")
+        build/src/main/tamer.c.o(".text.startAnimationTamer")
+        build/src/main/tamer.c.o(".text.tickEntityWalkTo")
+        build/src/main/tamer.c.o(".text.getEntityFromScriptId")
+        build/src/main/tamer.c.o(".text.tickLookAtEntity")
+        build/src/main/tamer.c.o(".text.tickEntitySetRotation")
+        build/src/main/tamer.c.o(".text.tickEntityMoveTo")
+        build/src/main/tamer.c.o(".text.tickEntityMoveToAxis")
+        build/src/main/tamer.c.o(".text.worldPosToScreenPos2")
+        build/src/main/tamer.c.o(".text.checkChestCollision")
+        build/src/main/tamer.c.o(".text.addTamerLevel")
+        build/src/main/tamer.c.o(".text.isTrainingComplete")
+        build/src/main/tamer.c.o(".text.renderAwardSomethingTextbox")
         . = ALIGN(., 4);
         build/src/main/fade.c.o(.text.*)
         . = ALIGN(., 4);
@@ -421,7 +462,7 @@ SECTIONS
         . = ALIGN(., 4);
         build/asm/main/data/partner_impl.data.s.o(.data.*)
         . = ALIGN(., 4);
-        KEEP(build/asm/main/data/tamer.data.s.o(.data.*))
+        build/src/main/tamer.c.o(.data.*)
         . = ALIGN(., 4);
         build/src/main/fade.c.o(.data.*)
         . = ALIGN(., 4);
@@ -535,7 +576,7 @@ SECTIONS
         . = ALIGN(., 4);
         build/asm/main/data/partner_impl.sdata.s.o(.sdata.*)
         . = ALIGN(., 4);
-        KEEP(build/asm/main/data/tamer.sdata.s.o(.sdata.*))
+        build/src/main/tamer.c.o(.sdata.*)
         . = ALIGN(., 4);
         build/asm/main/data/efe.sdata.s.o(.sdata.*)
         . = ALIGN(., 4);
