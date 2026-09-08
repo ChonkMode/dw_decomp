@@ -452,13 +452,19 @@ SECTIONS
         . = ALIGN(., 4);
         build/asm/main/data/map.data.s.o(.data.*)
         . = ALIGN(., 4);
+        build/src/main/inventory.c.o(.data.CONFIRM_PROMPT)
+        . = ALIGN(., 4);
+        build/src/main/inventory.c.o(.data.MAIN_D_8012A9C4)
+        . = ALIGN(., 4);
+        build/src/main/inventory.c.o(.data.ACTION_LABELS)
+        . = ALIGN(., 4);
+        build/asm/main/data/map_after_inventory.data.s.o(.data.*)
+        . = ALIGN(., 4);
         build/src/main/map_object.c.o(.data.*)
         . = ALIGN(., 4);
         build/asm/main/data/evolution.data.s.o(.data.*)
         . = ALIGN(., 4);
         build/asm/main/data/utils.data.s.o(.data.*)
-        . = ALIGN(., 4);
-        build/src/main/inventory.c.o(.data.*)
         . = ALIGN(., 4);
         build/src/main/clock.c.o(.data.*)
         . = ALIGN(., 4);
@@ -550,7 +556,7 @@ SECTIONS
         . = ALIGN(., 4);
         build/asm/main/data/map.sdata.s.o(.sdata.*)
         . = ALIGN(., 4);
-        build/asm/main/data/inventory.sdata.s.o(.sdata.*)
+        build/src/main/inventory.c.o(.sdata.*)
         . = ALIGN(., 4);
         build/src/main/clock.c.o(.sdata.*)
         . = ALIGN(., 4);
@@ -598,6 +604,22 @@ SECTIONS
         build/src/main/sound.c.o(.sbss.*)
         . = ALIGN(., 4);
         build/build/generated/unk_0x80134D9C.sbss.s.o(.sbss.*)
+        . = ALIGN(., 4);
+        build/src/main/inventory.c.o(.sbss.MAIN_D_80134E00)
+        build/src/main/inventory.c.o(.sbss.INVENTORY_STATE)
+        build/src/main/inventory.c.o(.sbss.INVENTORY_OPEN)
+        build/src/main/inventory.c.o(.sbss.INVENTORY_SCROLL_ROW)
+        build/src/main/inventory.c.o(.sbss.INVENTORY_ROW_OFFSET)
+        build/src/main/inventory.c.o(.sbss.INVENTORY_POINTER)
+        build/src/main/inventory.c.o(.sbss.INVENTORY_MOVE_SRC)
+        build/src/main/inventory.c.o(.sbss.INVENTORY_LAST_POINTER)
+        build/src/main/inventory.c.o(.sbss.ACTION_CURSOR)
+        build/src/main/inventory.c.o(.sbss.SORT_TYPE_CURSOR)
+        build/src/main/inventory.c.o(.sbss.CONFIRM_CURSOR)
+        . = ALIGN(., 4);
+        build/src/main/inventory.c.o(.sbss.INPUT_HOLD_FRAMES)
+        . = ALIGN(., 4);
+        build/build/generated/unk_0x80134E1C.sbss.s.o(.sbss.*)
         . = ALIGN(., 4);
         KEEP(build/src/main/map_object.c.o(.sbss.*))
         . = ALIGN(., 4);
