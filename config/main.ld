@@ -420,13 +420,8 @@ SECTIONS
         KEEP(build/src/main/_psstart.c.o(.data.*))
         . = ALIGN(., 4);
         build/src/main/partner_impl.c.o(.data.*)
-        MAIN_D_80122CF5 = MAIN_D_80122CF4 + 1;
-        MAIN_D_80122CF6 = MAIN_D_80122CF4 + 2;
-        MAIN_D_80122CF7 = MAIN_D_80122CF4 + 3;
-        MAIN_D_80122CF8 = MAIN_D_80122CF4 + 4;
-        MAIN_D_80122CF9 = MAIN_D_80122CF4 + 5;
         . = ALIGN(., 4);
-        build/src/main/partner.c.o(.data.*)
+        build/src/main/item_take_distance.c.o(.data.*)
         . = ALIGN(., 4);
         KEEP(build/asm/main/data/tamer.data.s.o(.data.*))
         . = ALIGN(., 4);
@@ -467,6 +462,8 @@ SECTIONS
         build/src/main/inventory.c.o(.data.*)
         . = ALIGN(., 4);
         build/src/main/clock.c.o(.data.*)
+        . = ALIGN(., 4);
+        build/src/main/partner.c.o(.data.*)
         . = ALIGN(., 4);
         build/src/main/entity_text.c.o(.data.*)
         . = ALIGN(., 4);

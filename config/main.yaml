@@ -181,7 +181,7 @@ segments:
       - [0x8D490, .data, file_table]
       - [0x92584, data, graphics]
       - [0x925A0, .data, partner_impl]
-      - [0x92D24, .data, partner]
+      - [0x92D24, .data, item_take_distance]
       - [0x92D68, data, tamer]
       - [0x9344C, data, psyq/libcd]
       - [0x93860, data, overworld]

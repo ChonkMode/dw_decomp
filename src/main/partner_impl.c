@@ -172,21 +172,25 @@ RaiseData RAISE_DATA[66] = {
 	  80, 40, 10, 36, 1200, 10, 55, 1, 3, 1, 20, 500, 230, -1870 },
 };
 
-uint8_t MAIN_D_80122CF4[48] = {
-	16, 0, 1, 0, 15, 9,
-	19, 0, 4, 0, 15, 9,
-	22, 0, 7, 0, 15, 9,
-	2, 0, 11, 0, 15, 9,
-	7, 0, 16, 0, 15, 9,
-	10, 0, 19, 0, 15, 9,
-	0, 0, 0, 0, 4, 1,
-	0, 0, 0, 0, 8, 3,
+typedef struct {
+	uint8_t sleepyHour;
+	uint8_t sleepyMinute;
+	uint8_t wakeupHour;
+	uint8_t wakeupMinute;
+	uint8_t awakeHours;
+	uint8_t sleepyHours;
+} SleepPattern;
+
+SleepPattern SLEEP_PATTERN[8] = {
+	{16, 0, 1, 0, 15, 9},
+	{19, 0, 4, 0, 15, 9},
+	{22, 0, 7, 0, 15, 9},
+	{2, 0, 11, 0, 15, 9},
+	{7, 0, 16, 0, 15, 9},
+	{10, 0, 19, 0, 15, 9},
+	{0, 0, 0, 0, 4, 1},
+	{0, 0, 0, 0, 8, 3},
 };
-extern uint8_t MAIN_D_80122CF5[];
-extern uint8_t MAIN_D_80122CF6[];
-extern uint8_t MAIN_D_80122CF7[];
-extern uint8_t MAIN_D_80122CF8[];
-extern uint8_t MAIN_D_80122CF9[];
 extern uint8_t MAIN_D_80137C00[2048];
 extern uint8_t MAIN_D_80127C15[];
 extern GsDOBJ2 POOP_OBJECT;
@@ -581,25 +585,25 @@ void setSleepTimes(PartnerPara *para, int32_t type)
 		para->sleepyMinute = 0;
 		para->wakeupHour =
 			(para->sleepyHour +
-			 MAIN_D_80122CF9[RAISE_SLEEP_CYCLE(type) * 6]);
+			 SLEEP_PATTERN[RAISE_SLEEP_CYCLE(type)].sleepyHours);
 		para->wakeupMinute = para->sleepyMinute;
 		para->wakeupHour %= 24;
 		para->hoursAwakeDefault = hoursAwake;
 		para->hoursAsleepDefault =
-			MAIN_D_80122CF9[RAISE_SLEEP_CYCLE(type) * 6];
+			SLEEP_PATTERN[RAISE_SLEEP_CYCLE(type)].sleepyHours;
 	} else {
 		para->sleepyHour =
-			MAIN_D_80122CF4[RAISE_SLEEP_CYCLE(type) * 6];
+			SLEEP_PATTERN[RAISE_SLEEP_CYCLE(type)].sleepyHour;
 		para->sleepyMinute =
-			MAIN_D_80122CF5[RAISE_SLEEP_CYCLE(type) * 6];
+			SLEEP_PATTERN[RAISE_SLEEP_CYCLE(type)].sleepyMinute;
 		para->wakeupHour =
-			MAIN_D_80122CF6[RAISE_SLEEP_CYCLE(type) * 6];
+			SLEEP_PATTERN[RAISE_SLEEP_CYCLE(type)].wakeupHour;
 		para->wakeupMinute =
-			MAIN_D_80122CF7[RAISE_SLEEP_CYCLE(type) * 6];
+			SLEEP_PATTERN[RAISE_SLEEP_CYCLE(type)].wakeupMinute;
 		para->hoursAwakeDefault =
-			MAIN_D_80122CF8[RAISE_SLEEP_CYCLE(type) * 6];
+			SLEEP_PATTERN[RAISE_SLEEP_CYCLE(type)].awakeHours;
 		para->hoursAsleepDefault =
-			MAIN_D_80122CF9[RAISE_SLEEP_CYCLE(type) * 6];
+			SLEEP_PATTERN[RAISE_SLEEP_CYCLE(type)].sleepyHours;
 	}
 
 	PARTNER_PARA.timeAwakeToday = PARTNER_PARA.hoursAwakeDefault * 6;
@@ -924,12 +928,15 @@ void tickSleepMechanics(void)
 				PARTNER_PARA.wakeupHour -= 24;
 			PARTNER_PARA.wakeupMinute = 0;
 		} else {
+			sleepCycle = RAISE_SLEEP_CYCLE(type);
 			PARTNER_PARA.sleepyHour =
-				MAIN_D_80122CF4[sleepCycle =
-						    RAISE_SLEEP_CYCLE(type) * 6];
-			PARTNER_PARA.sleepyMinute = MAIN_D_80122CF5[sleepCycle];
-			PARTNER_PARA.wakeupHour = MAIN_D_80122CF6[sleepCycle];
-			PARTNER_PARA.wakeupMinute = MAIN_D_80122CF7[sleepCycle];
+				SLEEP_PATTERN[sleepCycle].sleepyHour;
+			PARTNER_PARA.sleepyMinute =
+				SLEEP_PATTERN[sleepCycle].sleepyMinute;
+			PARTNER_PARA.wakeupHour =
+				SLEEP_PATTERN[sleepCycle].wakeupHour;
+			PARTNER_PARA.wakeupMinute =
+				SLEEP_PATTERN[sleepCycle].wakeupMinute;
 		}
 
 		PARTNER_PARA.timeAwakeToday =
@@ -1115,12 +1122,15 @@ void handleSleeping(void)
 			PARTNER_PARA.wakeupHour -= 24;
 		PARTNER_PARA.wakeupMinute = 0;
 	} else {
+		sleepCycle = RAISE_SLEEP_CYCLE(type);
 		PARTNER_PARA.sleepyHour =
-			MAIN_D_80122CF4[sleepCycle =
-					    RAISE_SLEEP_CYCLE(type) * 6];
-		PARTNER_PARA.sleepyMinute = MAIN_D_80122CF5[sleepCycle];
-		PARTNER_PARA.wakeupHour = MAIN_D_80122CF6[sleepCycle];
-		PARTNER_PARA.wakeupMinute = MAIN_D_80122CF7[sleepCycle];
+			SLEEP_PATTERN[sleepCycle].sleepyHour;
+		PARTNER_PARA.sleepyMinute =
+			SLEEP_PATTERN[sleepCycle].sleepyMinute;
+		PARTNER_PARA.wakeupHour =
+			SLEEP_PATTERN[sleepCycle].wakeupHour;
+		PARTNER_PARA.wakeupMinute =
+			SLEEP_PATTERN[sleepCycle].wakeupMinute;
 	}
 
 	setFoodTimer((int16_t)type);

@@ -50,12 +50,7 @@ extern VECTOR STORED_TAMER_POS;
 typedef void (*ItemFunction)(int16_t);
 extern ItemFunction ITEM_FUNCTIONS[128];
 
-int8_t ITEM_TAKE_DISTANCE[68] = {
-	10, 10, 10, 10, 15, 10, 10, 15, 10, 15, 10, 15, 10, 10, 10, 10, 10,
-	10, 15, 10, 10, 15, 10, 15, 10, 25, 10, 10, 10, 10, 10, 10, 10, 10,
-	15, 15, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 15,
-	10, 10, 10, 10, 10, 10, 10, 10, 15, 15, 10, 10, 10, 10, 10, 0, 0,
-};
+extern int8_t ITEM_TAKE_DISTANCE[68];
 
 void tickMainMenu(int32_t instanceId);
 void renderMainMenu(int32_t instanceId);

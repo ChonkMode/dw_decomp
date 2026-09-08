@@ -103,6 +103,7 @@ MAIN_SRC := \
 	src/main/graphics.c \
 	src/main/graphics2.c \
 	src/main/item.c \
+	src/main/item_take_distance.c \
 	src/main/kar.c \
 	src/main/main.c \
 	src/main/main_menu.c \
