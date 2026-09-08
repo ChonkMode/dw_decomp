@@ -421,8 +421,6 @@ SECTIONS
         . = ALIGN(., 4);
         build/src/main/partner_impl.c.o(.data.*)
         . = ALIGN(., 4);
-        build/src/main/item_take_distance.c.o(.data.*)
-        . = ALIGN(., 4);
         KEEP(build/asm/main/data/tamer.data.s.o(.data.*))
         . = ALIGN(., 4);
         build/src/main/fade.c.o(.data.*)

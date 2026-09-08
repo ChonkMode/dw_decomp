@@ -191,6 +191,14 @@ SleepPattern SLEEP_PATTERN[8] = {
 	{0, 0, 0, 0, 4, 1},
 	{0, 0, 0, 0, 8, 3},
 };
+
+int8_t ITEM_TAKE_DISTANCE[68] = {
+	10, 10, 10, 10, 15, 10, 10, 15, 10, 15, 10, 15, 10, 10, 10, 10, 10,
+	10, 15, 10, 10, 15, 10, 15, 10, 25, 10, 10, 10, 10, 10, 10, 10, 10,
+	15, 15, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 15,
+	10, 10, 10, 10, 10, 10, 10, 10, 15, 15, 10, 10, 10, 10, 10, 0, 0,
+};
+
 extern uint8_t MAIN_D_80137C00[2048];
 extern uint8_t MAIN_D_80127C15[];
 extern GsDOBJ2 POOP_OBJECT;
@@ -218,11 +226,6 @@ extern int32_t MAIN_D_80134C74;
 extern int32_t BUTTERFLY_ID;
 extern int32_t IS_SCRIPT_PAUSED;
 extern Stats DEATH_STATS;
-
-#define RAISE_SLEEP_CYCLE(type) \
-	(((uint8_t(*)[sizeof(RaiseData)])&RAISE_DATA[0].sleepCycle)[type][0])
-#define RAISE_HUNGER_BYTE(type, index) \
-	(((int8_t(*)[sizeof(RaiseData)])RAISE_DATA)[type][index])
 
 void applyMMD(int32_t digimonType, int32_t entityType,
 	      EvoModelData *modelData);
@@ -585,25 +588,25 @@ void setSleepTimes(PartnerPara *para, int32_t type)
 		para->sleepyMinute = 0;
 		para->wakeupHour =
 			(para->sleepyHour +
-			 SLEEP_PATTERN[RAISE_SLEEP_CYCLE(type)].sleepyHours);
+			 SLEEP_PATTERN[RAISE_DATA[type].sleepCycle].sleepyHours);
 		para->wakeupMinute = para->sleepyMinute;
 		para->wakeupHour %= 24;
 		para->hoursAwakeDefault = hoursAwake;
 		para->hoursAsleepDefault =
-			SLEEP_PATTERN[RAISE_SLEEP_CYCLE(type)].sleepyHours;
+			SLEEP_PATTERN[RAISE_DATA[type].sleepCycle].sleepyHours;
 	} else {
 		para->sleepyHour =
-			SLEEP_PATTERN[RAISE_SLEEP_CYCLE(type)].sleepyHour;
+			SLEEP_PATTERN[RAISE_DATA[type].sleepCycle].sleepyHour;
 		para->sleepyMinute =
-			SLEEP_PATTERN[RAISE_SLEEP_CYCLE(type)].sleepyMinute;
+			SLEEP_PATTERN[RAISE_DATA[type].sleepCycle].sleepyMinute;
 		para->wakeupHour =
-			SLEEP_PATTERN[RAISE_SLEEP_CYCLE(type)].wakeupHour;
+			SLEEP_PATTERN[RAISE_DATA[type].sleepCycle].wakeupHour;
 		para->wakeupMinute =
-			SLEEP_PATTERN[RAISE_SLEEP_CYCLE(type)].wakeupMinute;
+			SLEEP_PATTERN[RAISE_DATA[type].sleepCycle].wakeupMinute;
 		para->hoursAwakeDefault =
-			SLEEP_PATTERN[RAISE_SLEEP_CYCLE(type)].awakeHours;
+			SLEEP_PATTERN[RAISE_DATA[type].sleepCycle].awakeHours;
 		para->hoursAsleepDefault =
-			SLEEP_PATTERN[RAISE_SLEEP_CYCLE(type)].sleepyHours;
+			SLEEP_PATTERN[RAISE_DATA[type].sleepCycle].sleepyHours;
 	}
 
 	PARTNER_PARA.timeAwakeToday = PARTNER_PARA.hoursAwakeDefault * 6;
@@ -644,7 +647,7 @@ void setFoodTimer(int16_t type)
 				goto calculateTimer;
 			}
 
-			if (RAISE_HUNGER_BYTE(type, nextIndex) == -1 ||
+			if (RAISE_DATA[type].hungerTimes[nextIndex] == -1 ||
 			    i == 7) {
 				int32_t j;
 				int32_t nextJ;
@@ -657,7 +660,7 @@ void setFoodTimer(int16_t type)
 						goto calculateTimer;
 					}
 
-					if (RAISE_HUNGER_BYTE(type, nextJ) == -1 ||
+					if (RAISE_DATA[type].hungerTimes[nextJ] == -1 ||
 					    j == 7) {
 						PARTNER_PARA.nextHungerHour =
 							RAISE_DATA[type]
@@ -928,7 +931,7 @@ void tickSleepMechanics(void)
 				PARTNER_PARA.wakeupHour -= 24;
 			PARTNER_PARA.wakeupMinute = 0;
 		} else {
-			sleepCycle = RAISE_SLEEP_CYCLE(type);
+			sleepCycle = RAISE_DATA[type].sleepCycle;
 			PARTNER_PARA.sleepyHour =
 				SLEEP_PATTERN[sleepCycle].sleepyHour;
 			PARTNER_PARA.sleepyMinute =
@@ -1122,7 +1125,7 @@ void handleSleeping(void)
 			PARTNER_PARA.wakeupHour -= 24;
 		PARTNER_PARA.wakeupMinute = 0;
 	} else {
-		sleepCycle = RAISE_SLEEP_CYCLE(type);
+		sleepCycle = RAISE_DATA[type].sleepCycle;
 		PARTNER_PARA.sleepyHour =
 			SLEEP_PATTERN[sleepCycle].sleepyHour;
 		PARTNER_PARA.sleepyMinute =
