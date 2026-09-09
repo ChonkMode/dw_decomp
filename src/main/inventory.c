@@ -14,8 +14,20 @@ uint8_t MAIN_D_8012A9C4[3][6] = {
 	{2, 5, 0, 1, 4, 3},
 	{2, 0, 1, 3, 5, 4}
 };
-char ACTION_LABELS[32] =
-	"Use\0\0\0\0\0" "Move\0\0\0\0" "Sort\0\0\0\0" "Drop";
+__declspec(data) char ACTION_LABEL_USE[8] = "Use";
+__declspec(data) char ACTION_LABEL_MOVE[8] = "Move";
+__declspec(data) char ACTION_LABEL_SORT[8] = "Sort";
+__declspec(data) char ACTION_LABEL_DROP[8] = "Drop";
+
+static void *inventory_data_order[] = {
+	ACTION_LABEL_DROP,
+	ACTION_LABEL_SORT,
+	ACTION_LABEL_MOVE,
+	ACTION_LABEL_USE,
+	MAIN_D_8012A9C4,
+	CONFIRM_PROMPT,
+};
+
 char SORT_LABEL_BATTLE[8] = "Battle";
 char SORT_LABEL_RAISE[8] = "Raise";
 char SORT_LABEL_BASIC[8] = "Basic";
@@ -34,6 +46,21 @@ uint8_t ACTION_CURSOR;
 uint8_t SORT_TYPE_CURSOR;
 uint8_t CONFIRM_CURSOR;
 int32_t INPUT_HOLD_FRAMES;
+
+static void *inventory_sbss_order[] = {
+	&INPUT_HOLD_FRAMES,
+	&CONFIRM_CURSOR,
+	&SORT_TYPE_CURSOR,
+	&ACTION_CURSOR,
+	&INVENTORY_LAST_POINTER,
+	&INVENTORY_MOVE_SRC,
+	&INVENTORY_POINTER,
+	&INVENTORY_ROW_OFFSET,
+	&INVENTORY_SCROLL_ROW,
+	&INVENTORY_OPEN,
+	&INVENTORY_STATE,
+	&MAIN_D_80134E00,
+};
 
 extern int32_t POLLED_INPUT;
 extern int32_t POLLED_INPUT_PREVIOUS;
@@ -201,7 +228,7 @@ void drawInventoryText(void)
 		drawInventoryTextLine((int16_t)slot);
 	}
 	for (i = 0, y = 0; i < 4; ++i, y += 0xc) {
-		drawString(ACTION_LABELS + i * 8, 0xc0, y);
+		drawString(ACTION_LABEL_USE + i * 8, 0xc0, y);
 	}
 }
 
@@ -1057,4 +1084,3 @@ void moveMenuCursor(uint8_t *p, int32_t unused, int32_t max)
 		++*p;
 	}
 }
-

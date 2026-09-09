@@ -1,5 +1,8 @@
 ENTRY(__start)
 
+/* The retail loop reaches these labels by offset from ACTION_LABEL_USE. */
+EXTERN(ACTION_LABEL_MOVE ACTION_LABEL_SORT ACTION_LABEL_DROP)
+
 SECTIONS
 {
     __romPos = 0;
@@ -452,13 +455,9 @@ SECTIONS
         . = ALIGN(., 4);
         build/asm/main/data/map.data.s.o(.data.*)
         . = ALIGN(., 4);
-        build/src/main/inventory.c.o(.data.CONFIRM_PROMPT)
+        build/src/main/inventory.c.o(.data.*)
         . = ALIGN(., 4);
-        build/src/main/inventory.c.o(.data.MAIN_D_8012A9C4)
-        . = ALIGN(., 4);
-        build/src/main/inventory.c.o(.data.ACTION_LABELS)
-        . = ALIGN(., 4);
-        build/asm/main/data/map_after_inventory.data.s.o(.data.*)
+        build/asm/main/data/clock.data.s.o(.data.*)
         . = ALIGN(., 4);
         build/src/main/map_object.c.o(.data.*)
         . = ALIGN(., 4);
@@ -605,19 +604,7 @@ SECTIONS
         . = ALIGN(., 4);
         build/build/generated/unk_0x80134D9C.sbss.s.o(.sbss.*)
         . = ALIGN(., 4);
-        build/src/main/inventory.c.o(.sbss.MAIN_D_80134E00)
-        build/src/main/inventory.c.o(.sbss.INVENTORY_STATE)
-        build/src/main/inventory.c.o(.sbss.INVENTORY_OPEN)
-        build/src/main/inventory.c.o(.sbss.INVENTORY_SCROLL_ROW)
-        build/src/main/inventory.c.o(.sbss.INVENTORY_ROW_OFFSET)
-        build/src/main/inventory.c.o(.sbss.INVENTORY_POINTER)
-        build/src/main/inventory.c.o(.sbss.INVENTORY_MOVE_SRC)
-        build/src/main/inventory.c.o(.sbss.INVENTORY_LAST_POINTER)
-        build/src/main/inventory.c.o(.sbss.ACTION_CURSOR)
-        build/src/main/inventory.c.o(.sbss.SORT_TYPE_CURSOR)
-        build/src/main/inventory.c.o(.sbss.CONFIRM_CURSOR)
-        . = ALIGN(., 4);
-        build/src/main/inventory.c.o(.sbss.INPUT_HOLD_FRAMES)
+        build/src/main/inventory.c.o(.sbss.*)
         . = ALIGN(., 4);
         build/build/generated/unk_0x80134E1C.sbss.s.o(.sbss.*)
         . = ALIGN(., 4);
