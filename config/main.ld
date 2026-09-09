@@ -1,8 +1,5 @@
 ENTRY(__start)
 
-/* The retail loop reaches these labels by offset from ACTION_LABEL_USE. */
-EXTERN(ACTION_LABEL_MOVE ACTION_LABEL_SORT ACTION_LABEL_DROP)
-
 SECTIONS
 {
     __romPos = 0;

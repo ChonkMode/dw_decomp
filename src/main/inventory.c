@@ -14,19 +14,7 @@ uint8_t MAIN_D_8012A9C4[3][6] = {
 	{2, 5, 0, 1, 4, 3},
 	{2, 0, 1, 3, 5, 4}
 };
-__declspec(data) char ACTION_LABEL_USE[8] = "Use";
-__declspec(data) char ACTION_LABEL_MOVE[8] = "Move";
-__declspec(data) char ACTION_LABEL_SORT[8] = "Sort";
-__declspec(data) char ACTION_LABEL_DROP[8] = "Drop";
-
-static void *inventory_data_order[] = {
-	ACTION_LABEL_DROP,
-	ACTION_LABEL_SORT,
-	ACTION_LABEL_MOVE,
-	ACTION_LABEL_USE,
-	MAIN_D_8012A9C4,
-	CONFIRM_PROMPT,
-};
+char ACTION_LABELS[4][8] = {"Use", "Move", "Sort", "Drop"};
 
 char SORT_LABEL_BATTLE[8] = "Battle";
 char SORT_LABEL_RAISE[8] = "Raise";
@@ -228,7 +216,7 @@ void drawInventoryText(void)
 		drawInventoryTextLine((int16_t)slot);
 	}
 	for (i = 0, y = 0; i < 4; ++i, y += 0xc) {
-		drawString(ACTION_LABEL_USE + i * 8, 0xc0, y);
+		drawString(ACTION_LABELS[i], 0xc0, y);
 	}
 }
 
