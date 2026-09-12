@@ -31,7 +31,7 @@ struct DIRENTRY {
 typedef struct {
 	int8_t pos;
 	int8_t count;
-	int8_t unk2;
+	int8_t defaultPos;
 	int8_t scroll;
 	int8_t max;
 } MenuCursor;
@@ -100,47 +100,47 @@ typedef struct {
 	int8_t tamerWaypointActive;
 	uint8_t unknown4E1[0x1B];
 	int32_t checksum;
-	uint8_t unknown500[0xA00];
+	uint8_t battleRegistrationData[0xA00];
 } SavegamePayload;
 
-int32_t MAIN_D_80135030;
-int32_t MAIN_D_80135034;
-int32_t MAIN_D_80135038;
+int32_t MEMORY_CARD_PRESENT_MASK;
+int32_t MAIN_MENU_ACTION;
+int32_t SAVE_SLOT_SCROLL_TENTHS;
 int32_t MEMORY_CARD_SLOT;
-int32_t MAIN_D_80135040;
+int32_t MEMORY_CARD_ERROR;
 int32_t MEMORY_CARD_ID;
-int32_t MAIN_D_80135048;
+int32_t MAIN_MENU_TICKS;
 int32_t CURRENT_MENU;
-int32_t MAIN_D_80135050;
+int32_t MEMORY_CARD_CHANGED_MASK;
 int32_t MAIN_D_80135054;
-int32_t MAIN_D_80135058;
-int32_t MAIN_D_8013505C;
-int32_t MAIN_D_80135060;
+int32_t MEMORY_CARD_OPERATION;
+int32_t VS_PLAYER_INDEX;
+int32_t BATTLE_REGISTRATION_SLOT;
 int32_t CHECKED_MEMORY_CARD;
 int32_t TARGET_MENU;
-int32_t MAIN_D_8013506C;
-int32_t MAIN_D_80135070;
-int32_t MAIN_D_80135074;
+int32_t MEMORY_CARD_RETURN_MENU;
+int32_t MEMORY_CARD_USED_BLOCKS;
+int32_t SAVE_RETRY_RETURN_MENU;
 
 static void *main_menu_sbss_order[] = {
-	&MAIN_D_80135074,
-	&MAIN_D_80135070,
-	&MAIN_D_8013506C,
+	&SAVE_RETRY_RETURN_MENU,
+	&MEMORY_CARD_USED_BLOCKS,
+	&MEMORY_CARD_RETURN_MENU,
 	&TARGET_MENU,
 	&CHECKED_MEMORY_CARD,
-	&MAIN_D_80135060,
-	&MAIN_D_8013505C,
-	&MAIN_D_80135058,
+	&BATTLE_REGISTRATION_SLOT,
+	&VS_PLAYER_INDEX,
+	&MEMORY_CARD_OPERATION,
 	&MAIN_D_80135054,
-	&MAIN_D_80135050,
+	&MEMORY_CARD_CHANGED_MASK,
 	&CURRENT_MENU,
-	&MAIN_D_80135048,
+	&MAIN_MENU_TICKS,
 	&MEMORY_CARD_ID,
-	&MAIN_D_80135040,
+	&MEMORY_CARD_ERROR,
 	&MEMORY_CARD_SLOT,
-	&MAIN_D_80135038,
-	&MAIN_D_80135034,
-	&MAIN_D_80135030,
+	&SAVE_SLOT_SCROLL_TENTHS,
+	&MAIN_MENU_ACTION,
+	&MEMORY_CARD_PRESENT_MASK,
 };
 
 extern int8_t MAIN_STATE;
@@ -266,14 +266,14 @@ void drawMainMenuStrings();
 void drawSaveSlotText(int32_t slot, int32_t row);
 char *MAIN_func_8010FB7C(int32_t value, char *buf, int32_t digits);
 void MAIN_func_8010FBB0();
-void MAIN_func_8010FC48(int32_t slot);
+void drawRegisteredBattleSlots(int32_t slot);
 void updateMemoryCardState();
 void tickMainMenu(void);
 int32_t MAIN_func_8011239C(MenuCursor *cursor, int32_t which);
 int32_t MAIN_func_80112524(int32_t menu);
-void setMemoryCardReadError(int32_t id, int32_t slot);
+void setMemoryCardReadError(int32_t id, int32_t returnMenu);
 int32_t MAIN_func_801125A8(int32_t chan, int32_t mode);
-int32_t MAIN_func_80112628(int32_t channel, int32_t slot);
+int32_t countUsedMemoryCardBlocks(int32_t channel, int32_t returnMenu);
 int32_t loadSaveSlotData(int32_t channel, char *filename, SaveSlotPreview *slots, int32_t unused);
 int32_t MAIN_func_8011296C(MenuCursor *cursor, int32_t which);
 void initializeDefaultSavegame(void);
@@ -310,14 +310,14 @@ void *main_menu_order_anchor[] = {
 	initializeDefaultSavegame,
 	MAIN_func_8011296C,
 	loadSaveSlotData,
-	MAIN_func_80112628,
+	countUsedMemoryCardBlocks,
 	MAIN_func_801125A8,
 	setMemoryCardReadError,
 	MAIN_func_80112524,
 	MAIN_func_8011239C,
 	tickMainMenu,
 	updateMemoryCardState,
-	MAIN_func_8010FC48,
+	drawRegisteredBattleSlots,
 	MAIN_func_8010FBB0,
 	MAIN_func_8010FB7C,
 	drawSaveSlotText,
@@ -417,12 +417,12 @@ void MAIN_func_8010D3E0(void)
 	POLY_FT4 *cur;
 
 	cur = (POLY_FT4 *)GsGetWorkBase();
-	if (MAIN_D_80135030 & 1) {
+	if (MEMORY_CARD_PRESENT_MASK & 1) {
 		renderText(cur++, 0x4B, 0x37, 0, 0, 0xBE, 0xC, 0);
 	} else {
 		renderText(cur++, 0x4B, 0x37, 0, 0, 0xBE, 0xC, 1);
 	}
-	if (MAIN_D_80135030 & 0x10) {
+	if (MEMORY_CARD_PRESENT_MASK & 0x10) {
 		renderText(cur++, 0x4B, 0x43, 0, 0xC, 0xBE, 0xC, 0);
 	} else {
 		renderText(cur++, 0x4B, 0x43, 0, 0xC, 0xBE, 0xC, 1);
@@ -437,12 +437,12 @@ void MAIN_func_8010D554(void)
 	POLY_FT4 *cur;
 
 	cur = (POLY_FT4 *)GsGetWorkBase();
-	if (MAIN_D_80135030 & 1) {
+	if (MEMORY_CARD_PRESENT_MASK & 1) {
 		renderText(cur++, 0x46, 0x37, 0, 0, 0xBE, 0xC, 0);
 	} else {
 		renderText(cur++, 0x46, 0x37, 0, 0, 0xBE, 0xC, 1);
 	}
-	if (MAIN_D_80135030 & 0x10) {
+	if (MEMORY_CARD_PRESENT_MASK & 0x10) {
 		renderText(cur++, 0x46, 0x43, 0, 0xC, 0xBE, 0xC, 0);
 	} else {
 		renderText(cur++, 0x46, 0x43, 0, 0xC, 0xBE, 0xC, 1);
@@ -489,8 +489,8 @@ void renderSaveSlotBox(int32_t slot, int32_t x, int32_t y)
 	v = ((slot % 7) * 0x18) + 0xC;
 	cur = (POLY_FT4 *)GsGetWorkBase();
 	idx = slot * 0x11;
-	if ((((int32_t *)MAIN_D_801BF768)[idx] != 0 && MAIN_D_80135034 != 0) ||
-	    (((int32_t *)MAIN_D_801BF768)[idx] == 0 && MAIN_D_80135034 == 0)) {
+	if ((((int32_t *)MAIN_D_801BF768)[idx] != 0 && MAIN_MENU_ACTION != 0) ||
+	    (((int32_t *)MAIN_D_801BF768)[idx] == 0 && MAIN_MENU_ACTION == 0)) {
 		hl = 0;
 	} else {
 		hl = 1;
@@ -517,18 +517,18 @@ void MAIN_func_8010DA44(void)
 	GsSetWorkBase((PACKET *)ft4);
 	renderMenuBox(0x30, 0x13, 0xE0, 0x16);
 
-	if (MAIN_D_80135038 < MAIN_D_8013172B[0] * 10) {
-		MAIN_D_80135038 += 2;
+	if (SAVE_SLOT_SCROLL_TENTHS < MAIN_D_8013172B[0] * 10) {
+		SAVE_SLOT_SCROLL_TENTHS += 2;
 	}
 
-	if (MAIN_D_8013172B[0] * 10 < MAIN_D_80135038) {
-		MAIN_D_80135038 -= 2;
+	if (MAIN_D_8013172B[0] * 10 < SAVE_SLOT_SCROLL_TENTHS) {
+		SAVE_SLOT_SCROLL_TENTHS -= 2;
 	}
 
-	page = MAIN_D_80135038 / 10;
+	page = SAVE_SLOT_SCROLL_TENTHS / 10;
 
 	for (i = 1; i < 6; ++i) {
-		y = (i * 0x24) + ((page * 10 - MAIN_D_80135038) * 36 / 10 + 0x29);
+		y = (i * 0x24) + ((page * 10 - SAVE_SLOT_SCROLL_TENTHS) * 36 / 10 + 0x29);
 		if (y < 0x29) {
 			y = 0x29;
 		}
@@ -540,7 +540,7 @@ void MAIN_func_8010DA44(void)
 		renderSaveSlotBox(page + i, 0x30, y);
 	}
 
-	y = (page * 10 - MAIN_D_80135038) * 36 / 10 + 0x29;
+	y = (page * 10 - SAVE_SLOT_SCROLL_TENTHS) * 36 / 10 + 0x29;
 	if (y < 0x29) {
 		y = 0x29;
 	}
@@ -593,8 +593,8 @@ void MAIN_func_8010DFAC(void)
 {
 	POLY_FT4 *cur;
 
-	if ((MAIN_D_80135040 == 1) || (MAIN_D_80135040 == 3) || (MAIN_D_80135040 == 4) ||
-	    (MAIN_D_80135040 == 5) || (MAIN_D_80135040 == 7)) {
+	if ((MEMORY_CARD_ERROR == 1) || (MEMORY_CARD_ERROR == 3) || (MEMORY_CARD_ERROR == 4) ||
+	    (MEMORY_CARD_ERROR == 5) || (MEMORY_CARD_ERROR == 7)) {
 		cur = (POLY_FT4 *)GsGetWorkBase();
 		renderText(cur++, 0x4C, 0x37, 0, 0, 0xA8, 0x18, 3);
 		GsSetWorkBase((PACKET *)cur);
@@ -630,12 +630,12 @@ void MAIN_func_8010E16C(void)
 	} else {
 		mask = 0x10;
 	}
-	if (!(MAIN_D_80135030 & mask)) {
-		MAIN_D_80135040 = 1;
+	if (!(MEMORY_CARD_PRESENT_MASK & mask)) {
+		MEMORY_CARD_ERROR = 1;
 		renderText(cur++, 0x40, 0x5A, 0, 0xF0, 0x1C, 0xC, 1);
 	} else {
-		if (MAIN_D_80135040 == 1) {
-			MAIN_D_80135040 = -1;
+		if (MEMORY_CARD_ERROR == 1) {
+			MEMORY_CARD_ERROR = -1;
 		}
 		renderText(cur++, 0x40, 0x5A, 0, 0xF0, 0x1C, 0xC, 0);
 	}
@@ -643,7 +643,7 @@ void MAIN_func_8010E16C(void)
 	GsSetWorkBase((PACKET *)cur);
 	renderMenuBox(0x36, 0x33, 0xE8, 0x22);
 	renderMenuBox(0x36, 0x55, 0x38, 0x22);
-	if (MAIN_D_80135040 != -1) {
+	if (MEMORY_CARD_ERROR != -1) {
 		cur = (POLY_FT4 *)GsGetWorkBase();
 		renderText(cur++, 0x4C, 0x82, 0, 0x24, 0xA8, 0x18, 2);
 		GsSetWorkBase((PACKET *)cur);
@@ -665,7 +665,7 @@ void MAIN_func_8010E350(void)
 	} else {
 		mask = 0x10;
 	}
-	if (MAIN_D_80135030 & mask) {
+	if (MEMORY_CARD_PRESENT_MASK & mask) {
 		hl = 0;
 	} else {
 		hl = 1;
@@ -839,7 +839,7 @@ void drawMainMenuStrings(int32_t menu)
 	char buf[0x2C];
 	int32_t type;
 
-	MAIN_D_80135048 = 0;
+	MAIN_MENU_TICKS = 0;
 	CURRENT_MENU = menu;
 	if (menu == -1) {
 		return;
@@ -850,8 +850,8 @@ void drawMainMenuStrings(int32_t menu)
 	}
 	MAIN_D_801316B8[view].pos = MAIN_D_801316B8[view].pad[1];
 	MAIN_D_801316B8[view].pad[2] = 0;
-	MAIN_D_80135038 = 0;
-	MAIN_D_80135050 = 0;
+	SAVE_SLOT_SCROLL_TENTHS = 0;
+	MEMORY_CARD_CHANGED_MASK = 0;
 	clearTextArea();
 	switch (view) {
 	case 0:
@@ -884,7 +884,7 @@ void drawMainMenuStrings(int32_t menu)
 		MAIN_D_80135054 = 2;
 		break;
 	case 5:
-		drawString(MAIN_D_80131898[MAIN_D_80135058], 0, 0);
+		drawString(MAIN_D_80131898[MEMORY_CARD_OPERATION], 0, 0);
 		DrawSync(0);
 		drawString(MAIN_D_80131278, 0, 0xC);
 		DrawSync(0);
@@ -904,10 +904,10 @@ void drawMainMenuStrings(int32_t menu)
 		drawString(&MAIN_D_80134664, 0, 0xF0);
 		break;
 	case 7:
-		drawString(MAIN_D_80131878[MAIN_D_80135034], 0, 0);
+		drawString(MAIN_D_80131878[MAIN_MENU_ACTION], 0, 0);
 		DrawSync(0);
-		if (MAIN_D_80135034 == 0 || MAIN_D_80135034 == 1 ||
-		    MAIN_D_80135034 == 2) {
+		if (MAIN_MENU_ACTION == 0 || MAIN_MENU_ACTION == 1 ||
+		    MAIN_MENU_ACTION == 2) {
 			if (MEMORY_CARD_ID != 0) {
 				if (MAIN_D_80135054 == 1) {
 					drawString(&MAIN_D_80134662, 0x9A, 0);
@@ -935,9 +935,9 @@ void drawMainMenuStrings(int32_t menu)
 		drawString(&MAIN_D_8013466C, 0, 0xF0);
 		break;
 	case 8:
-		drawString(MAIN_D_80131878[MAIN_D_80135034], 0, 0);
-		if (MAIN_D_80135034 == 0 || MAIN_D_80135034 == 1 ||
-		    MAIN_D_80135034 == 2) {
+		drawString(MAIN_D_80131878[MAIN_MENU_ACTION], 0, 0);
+		if (MAIN_MENU_ACTION == 0 || MAIN_MENU_ACTION == 1 ||
+		    MAIN_MENU_ACTION == 2) {
 			if (MEMORY_CARD_ID != 0) {
 				if (MAIN_D_80135054 == 1) {
 					drawString(&MAIN_D_80134662, 0x9A, 0);
@@ -960,10 +960,10 @@ void drawMainMenuStrings(int32_t menu)
 		DrawSync(0);
 		drawString(&MAIN_D_80131658[(MEMORY_CARD_SLOT + 1) * 6], 0, 0x30);
 		DrawSync(0);
-		drawString(MAIN_D_801318DC[MAIN_D_80135034], 0x18, 0x30);
+		drawString(MAIN_D_801318DC[MAIN_MENU_ACTION], 0x18, 0x30);
 		DrawSync(0);
 		drawString(&MAIN_D_8013466C, 0, 0xF0);
-		if (MAIN_D_80135034 == 2) {
+		if (MAIN_MENU_ACTION == 2) {
 			MAIN_D_801316B8[view].pos = 1;
 		}
 		break;
@@ -973,17 +973,17 @@ void drawMainMenuStrings(int32_t menu)
 		if (MEMORY_CARD_ID != 0) {
 			drawString(&MAIN_D_80134674, 0x30, 0);
 		}
-		if (MAIN_D_80135040 == 1) {
+		if (MEMORY_CARD_ERROR == 1) {
 			drawString(&MAIN_D_80134678, 0x3C, 0);
 		}
-		if (MAIN_D_80135040 == 1 || MAIN_D_80135040 == 4) {
+		if (MEMORY_CARD_ERROR == 1 || MEMORY_CARD_ERROR == 4) {
 			drawString(&MAIN_D_8013467C, 0x9C, 0);
 		}
-		if (MAIN_D_80135040 == 3) {
+		if (MEMORY_CARD_ERROR == 3) {
 			drawString(&MAIN_D_80134680, 0x9C, 0);
 		}
 		DrawSync(0);
-		drawString(MAIN_D_801318B0[MAIN_D_80135040], 0, 0xC);
+		drawString(MAIN_D_801318B0[MEMORY_CARD_ERROR], 0, 0xC);
 		break;
 	case 11:
 		drawString(MAIN_D_8013136C, 0, 0);
@@ -994,23 +994,23 @@ void drawMainMenuStrings(int32_t menu)
 		DrawSync(0);
 		drawString(MAIN_D_801313B0, 0, 0xC);
 		DrawSync(0);
-		if (MAIN_D_80135040 != -1) {
+		if (MEMORY_CARD_ERROR != -1) {
 			drawString(MAIN_D_801313D0, 0, 0x24);
 			DrawSync(0);
 			if (MEMORY_CARD_ID != 0) {
 				drawString(&MAIN_D_80134660, 0x30, 0x24);
 			}
-			if (MAIN_D_80135040 == 1) {
+			if (MEMORY_CARD_ERROR == 1) {
 				drawString(&MAIN_D_80134660, 0x3C, 0x24);
 			}
-			if (MAIN_D_80135040 == 1 || MAIN_D_80135040 == 4) {
+			if (MEMORY_CARD_ERROR == 1 || MEMORY_CARD_ERROR == 4) {
 				drawString(&MAIN_D_80134660, 0x9C, 0x24);
 			}
-			if (MAIN_D_80135040 == 3) {
+			if (MEMORY_CARD_ERROR == 3) {
 				drawString(&MAIN_D_80134660, 0x9C, 0x24);
 			}
 			DrawSync(0);
-			drawString(MAIN_D_801318B0[MAIN_D_80135040], 0, 0x30);
+			drawString(MAIN_D_801318B0[MEMORY_CARD_ERROR], 0, 0x30);
 			DrawSync(0);
 		}
 		drawString(&MAIN_D_80134664, 0, 0xF0);
@@ -1025,7 +1025,7 @@ void drawMainMenuStrings(int32_t menu)
 		drawString(MAIN_D_8013141C, 0, 0x24);
 		DrawSync(0);
 		drawString(&MAIN_D_80134664, 0, 0xF0);
-		if (MAIN_D_8013505C == 1) {
+		if (VS_PLAYER_INDEX == 1) {
 			drawString(&MAIN_D_80134662, 0x76, 0x24);
 			drawString(&MAIN_D_80134662, 0xB4, 0x24);
 		}
@@ -1067,7 +1067,7 @@ void drawMainMenuStrings(int32_t menu)
 	case 15:
 		drawString(MAIN_D_80131890[0], 0, 0);
 		DrawSync(0);
-		MAIN_func_8010FC48(0);
+		drawRegisteredBattleSlots(0);
 		drawString(MAIN_D_8013147C, 0, 0x84);
 		break;
 	case 16:
@@ -1079,9 +1079,9 @@ void drawMainMenuStrings(int32_t menu)
 		strcpy(buf, PARTNER_ENTITY.name);
 		drawString(buf, 0, 0x18);
 		DrawSync(0);
-		drawString(&MAIN_D_80131658[((MAIN_D_80135060 + 1) / 10) * 6] + 2, 0, 0xC);
+		drawString(&MAIN_D_80131658[((BATTLE_REGISTRATION_SLOT + 1) / 10) * 6] + 2, 0, 0xC);
 		DrawSync(0);
-		drawString(&MAIN_D_80131658[((MAIN_D_80135060 + 1) % 10) * 6] + 2, 0xC, 0xC);
+		drawString(&MAIN_D_80131658[((BATTLE_REGISTRATION_SLOT + 1) % 10) * 6] + 2, 0xC, 0xC);
 		DrawSync(0);
 		drawString(&MAIN_D_801346AC, 0, 0x24);
 		DrawSync(0);
@@ -1175,7 +1175,7 @@ void MAIN_func_8010FBB0(int32_t type, int32_t anim, int32_t color, int32_t pos)
 	}
 }
 
-void MAIN_func_8010FC48(int32_t slot)
+void drawRegisteredBattleSlots(int32_t slot)
 {
 	RECT area;
 	int32_t currentSlot;
@@ -1235,14 +1235,14 @@ void updateMemoryCardState(void)
 				} else {
 					mask = 1;
 				}
-				MAIN_D_80135050 |= mask;
+				MEMORY_CARD_CHANGED_MASK |= mask;
 			case 0:
 				if (CHECKED_MEMORY_CARD == 0x10) {
 					mask = 0x10;
 				} else {
 					mask = 1;
 				}
-				MAIN_D_80135030 |= mask;
+				MEMORY_CARD_PRESENT_MASK |= mask;
 				CHECKED_MEMORY_CARD ^= 0x10;
 				break;
 			case 2:
@@ -1253,7 +1253,7 @@ void updateMemoryCardState(void)
 				} else {
 					mask = -2;
 				}
-				MAIN_D_80135030 &= mask;
+				MEMORY_CARD_PRESENT_MASK &= mask;
 				CHECKED_MEMORY_CARD ^= 0x10;
 				break;
 			}
@@ -1283,7 +1283,7 @@ void tickMainMenu(void)
 	if (TARGET_MENU != CURRENT_MENU) {
 		drawMainMenuStrings(TARGET_MENU);
 	}
-	MAIN_D_80135048++;
+	MAIN_MENU_TICKS++;
 
 	switch (CURRENT_MENU) {
 	case 0:
@@ -1294,24 +1294,24 @@ void tickMainMenu(void)
 			switch (cursor->pos) {
 			case 0:
 				TARGET_MENU = 0xA;
-				MAIN_D_80135034 = 0;
+				MAIN_MENU_ACTION = 0;
 				break;
 			case 1:
-				if (MAIN_D_80135030 != 0) {
+				if (MEMORY_CARD_PRESENT_MASK != 0) {
 					TARGET_MENU = 0x14;
-					MAIN_D_80135034 = 1;
+					MAIN_MENU_ACTION = 1;
 				}
 				break;
 			case 2:
-				if (MAIN_D_80135030 != 0) {
+				if (MEMORY_CARD_PRESENT_MASK != 0) {
 					TARGET_MENU = 0x1E;
-					MAIN_D_80135034 = 2;
+					MAIN_MENU_ACTION = 2;
 				}
 				break;
 			case 3:
 				TARGET_MENU = 0x32;
-				MAIN_D_8013505C = 0;
-				MAIN_D_80135034 = 5;
+				VS_PLAYER_INDEX = 0;
+				MAIN_MENU_ACTION = 5;
 				break;
 			}
 			break;
@@ -1327,7 +1327,7 @@ void tickMainMenu(void)
 		case 1:
 			if (cursor->pos == 0) {
 				TARGET_MENU = 2;
-				MAIN_D_80135058 = 5;
+				MEMORY_CARD_OPERATION = 5;
 			} else {
 				TARGET_MENU = 0;
 			}
@@ -1340,13 +1340,13 @@ void tickMainMenu(void)
 		break;
 
 	case 2:
-		if (MAIN_D_80135048 >= 3) {
+		if (MAIN_MENU_TICKS >= 3) {
 			MemCardSync(0, &command, &result);
 			input = MemCardFormat(MEMORY_CARD_ID);
 			switch (input) {
 			case 0:
-				TARGET_MENU = MAIN_D_8013506C;
-				MAIN_D_80135058 = 0;
+				TARGET_MENU = MEMORY_CARD_RETURN_MENU;
+				MEMORY_CARD_OPERATION = 0;
 				break;
 			case 1:
 			case 2:
@@ -1361,21 +1361,21 @@ void tickMainMenu(void)
 
 	case 3:
 		if (((CHANGED_INPUT != 0x10) && (CHANGED_INPUT != 0x40)) ||
-		    (MAIN_D_80135048 >= 3)) {
+		    (MAIN_MENU_TICKS >= 3)) {
 			combinedInput = (CHANGED_INPUT & 0xFFFF) |
 				((uint32_t)(CHANGED_INPUT & 0xFFFF0000) >> 16);
 			if ((combinedInput == 0x10) || (combinedInput == 0x40)) {
 				playSound(0, 3);
-				TARGET_MENU = MAIN_D_8013506C;
+				TARGET_MENU = MEMORY_CARD_RETURN_MENU;
 			}
-			if (MAIN_D_80135048 >= 0x12D) {
-				TARGET_MENU = MAIN_D_8013506C;
+			if (MAIN_MENU_TICKS >= 0x12D) {
+				TARGET_MENU = MEMORY_CARD_RETURN_MENU;
 			}
 		}
 		break;
 
 	case 9:
-		if (MAIN_D_80135048 >= 3) {
+		if (MAIN_MENU_TICKS >= 3) {
 			TARGET_MENU = -1;
 		}
 		break;
@@ -1387,17 +1387,17 @@ void tickMainMenu(void)
 		case 1:
 			switch (cursor->pos) {
 			case 0:
-				if (MAIN_D_80135030 & 1) {
+				if (MEMORY_CARD_PRESENT_MASK & 1) {
 					MEMORY_CARD_ID = 0;
 					TARGET_MENU = 0xC;
-					MAIN_D_80135058 = 0;
+					MEMORY_CARD_OPERATION = 0;
 				}
 				break;
 			case 1:
-				if (MAIN_D_80135030 & 0x10) {
+				if (MEMORY_CARD_PRESENT_MASK & 0x10) {
 					MEMORY_CARD_ID = 0x10;
 					TARGET_MENU = 0xC;
-					MAIN_D_80135058 = 0;
+					MEMORY_CARD_OPERATION = 0;
 				}
 				break;
 			case 2:
@@ -1412,7 +1412,7 @@ void tickMainMenu(void)
 		break;
 
 	case 0xC:
-		if (MAIN_D_80135048 >= 3) {
+		if (MAIN_MENU_TICKS >= 3) {
 			MemCardSync(0, &command, &result);
 			if (MemCardAccept(MEMORY_CARD_ID) == 0) {
 				setMemoryCardReadError(0, 0);
@@ -1426,7 +1426,7 @@ void tickMainMenu(void)
 				break;
 			case 4:
 				TARGET_MENU = 1;
-				MAIN_D_8013506C = 0xC;
+				MEMORY_CARD_RETURN_MENU = 0xC;
 				break;
 			default:
 				setMemoryCardReadError(result, 0);
@@ -1437,8 +1437,8 @@ void tickMainMenu(void)
 
 	case 0xD:
 		TARGET_MENU = 0xE;
-		if ((MAIN_D_80135070 = MAIN_func_80112628(MEMORY_CARD_ID, 0)) != -1) {
-			if (MAIN_D_80135070 >= 0xF) {
+		if ((MEMORY_CARD_USED_BLOCKS = countUsedMemoryCardBlocks(MEMORY_CARD_ID, 0)) != -1) {
+			if (MEMORY_CARD_USED_BLOCKS >= 0xF) {
 				setMemoryCardReadError(7, 0);
 			} else {
 				MAIN_D_8013190C[0xF] = 0x3F;
@@ -1472,7 +1472,7 @@ void tickMainMenu(void)
 			if (input == 1) {
 				if (cursor->pos == 0) {
 					TARGET_MENU = 0x10;
-					MAIN_D_80135058 = 1;
+					MEMORY_CARD_OPERATION = 1;
 				} else {
 					goto cancel_create;
 				}
@@ -1485,7 +1485,7 @@ void tickMainMenu(void)
 		break;
 
 	case 0x10:
-		if ((MAIN_D_80135048 >= 3) && MemCardSync(1, &command, &result)) {
+		if ((MAIN_MENU_TICKS >= 3) && MemCardSync(1, &command, &result)) {
 			MAIN_D_8013190C[0xF] = MAIN_D_80131648[MEMORY_CARD_SLOT];
 			input = MemCardCreateFile(MEMORY_CARD_ID, MAIN_D_8013190C, 1);
 			switch (input) {
@@ -1497,7 +1497,7 @@ void tickMainMenu(void)
 				break;
 			case 4:
 				TARGET_MENU = 1;
-				MAIN_D_8013506C = 0xC;
+				MEMORY_CARD_RETURN_MENU = 0xC;
 				break;
 			default:
 				setMemoryCardReadError(input, 0);
@@ -1571,17 +1571,17 @@ void tickMainMenu(void)
 		case 1:
 			switch (cursor->pos) {
 			case 0:
-				if (MAIN_D_80135030 & 1) {
+				if (MEMORY_CARD_PRESENT_MASK & 1) {
 					MEMORY_CARD_ID = 0;
 					TARGET_MENU = 0x15;
-					MAIN_D_80135058 = 0;
+					MEMORY_CARD_OPERATION = 0;
 				}
 				break;
 			case 1:
-				if (MAIN_D_80135030 & 0x10) {
+				if (MEMORY_CARD_PRESENT_MASK & 0x10) {
 					MEMORY_CARD_ID = 0x10;
 					TARGET_MENU = 0x15;
-					MAIN_D_80135058 = 0;
+					MEMORY_CARD_OPERATION = 0;
 				}
 				break;
 			}
@@ -1593,7 +1593,7 @@ void tickMainMenu(void)
 		break;
 
 	case 0x15:
-		if (MAIN_D_80135048 >= 3) {
+		if (MAIN_MENU_TICKS >= 3) {
 			MemCardSync(0, &command, &result);
 			if (MemCardAccept(MEMORY_CARD_ID) == 0) {
 				setMemoryCardReadError(0, 0);
@@ -1640,7 +1640,7 @@ void tickMainMenu(void)
 			if (input == 1) {
 				if (cursor->pos == 0) {
 					TARGET_MENU = 0x19;
-					MAIN_D_80135058 = 2;
+					MEMORY_CARD_OPERATION = 2;
 				} else {
 					goto cancel_load;
 				}
@@ -1653,7 +1653,7 @@ void tickMainMenu(void)
 		break;
 
 	case 0x19:
-		if (MAIN_D_80135048 >= 3) {
+		if (MAIN_MENU_TICKS >= 3) {
 			MemCardSync(0, &command, &result);
 			MAIN_D_8013190C[0xF] = MAIN_D_80131648[MEMORY_CARD_SLOT];
 			input = MemCardReadFile(MEMORY_CARD_ID, MAIN_D_8013190C,
@@ -1690,17 +1690,17 @@ void tickMainMenu(void)
 			if (input == 1) {
 				switch (cursor->pos) {
 				case 0:
-					if (MAIN_D_80135030 & 1) {
+					if (MEMORY_CARD_PRESENT_MASK & 1) {
 						MEMORY_CARD_ID = 0;
 						TARGET_MENU = 0x1F;
-						MAIN_D_80135058 = 0;
+						MEMORY_CARD_OPERATION = 0;
 					}
 					break;
 				case 1:
-					if (MAIN_D_80135030 & 0x10) {
+					if (MEMORY_CARD_PRESENT_MASK & 0x10) {
 						MEMORY_CARD_ID = 0x10;
 						TARGET_MENU = 0x1F;
-						MAIN_D_80135058 = 0;
+						MEMORY_CARD_OPERATION = 0;
 					}
 					break;
 				}
@@ -1708,13 +1708,13 @@ void tickMainMenu(void)
 		} else {
 			TARGET_MENU = 0;
 		}
-		if (MAIN_D_80135030 == 0) {
+		if (MEMORY_CARD_PRESENT_MASK == 0) {
 			TARGET_MENU = 0;
 		}
 		break;
 
 	case 0x1F:
-		if (MAIN_D_80135048 >= 3) {
+		if (MAIN_MENU_TICKS >= 3) {
 			MemCardSync(0, &command, &result);
 			if (MemCardAccept(MEMORY_CARD_ID) == 0) {
 				setMemoryCardReadError(0, 0);
@@ -1761,7 +1761,7 @@ void tickMainMenu(void)
 			if (input == 1) {
 				if (cursor->pos == 0) {
 					TARGET_MENU = 0x23;
-					MAIN_D_80135058 = 4;
+					MEMORY_CARD_OPERATION = 4;
 				} else {
 					goto cancel_delete;
 				}
@@ -1774,12 +1774,12 @@ void tickMainMenu(void)
 		break;
 
 	case 0x23:
-		if ((MAIN_D_80135048 >= 3) && MemCardSync(1, &command, &result)) {
+		if ((MAIN_MENU_TICKS >= 3) && MemCardSync(1, &command, &result)) {
 			MAIN_D_8013190C[0xF] = MAIN_D_80131648[MEMORY_CARD_SLOT];
 			input = MemCardDeleteFile(MEMORY_CARD_ID, MAIN_D_8013190C);
 			if (input == 0) {
 				TARGET_MENU = 0x1F;
-				MAIN_D_80135058 = 0;
+				MEMORY_CARD_OPERATION = 0;
 			} else {
 				setMemoryCardReadError(input, 0);
 			}
@@ -1795,9 +1795,9 @@ void tickMainMenu(void)
 				TARGET_MENU = 9;
 				MAIN_STATE = 0;
 			} else {
-				MAIN_D_80135074 = 0x28;
+				SAVE_RETRY_RETURN_MENU = 0x28;
 				TARGET_MENU = 0x29;
-				MAIN_D_80135058 = 0;
+				MEMORY_CARD_OPERATION = 0;
 			}
 			break;
 		case 2:
@@ -1806,7 +1806,7 @@ void tickMainMenu(void)
 		break;
 
 	case 0x29:
-		if (MAIN_D_80135048 >= 3) {
+		if (MAIN_MENU_TICKS >= 3) {
 			MemCardSync(0, &command, &result);
 			if (MemCardExist(MEMORY_CARD_ID) == 0) {
 				setMemoryCardReadError(0, 0x28);
@@ -1818,13 +1818,13 @@ void tickMainMenu(void)
 				TARGET_MENU = 0x2A;
 				break;
 			case 3:
-				MAIN_D_80135040 = -1;
+				MEMORY_CARD_ERROR = -1;
 				TARGET_MENU = 0x30;
 				break;
 			case 1:
 			case 2:
 			case 4:
-				MAIN_D_80135040 = result;
+				MEMORY_CARD_ERROR = result;
 				TARGET_MENU = 0x30;
 				break;
 			default:
@@ -1839,29 +1839,29 @@ void tickMainMenu(void)
 		MAIN_D_8013190C[0xF] = MAIN_D_80131648[MEMORY_CARD_SLOT];
 		input = MemCardGetDirentry(MEMORY_CARD_ID, MAIN_D_8013190C,
 					MAIN_D_801346D0, (long *)&count, 0, 1);
-		MAIN_D_80135040 = -1;
+		MEMORY_CARD_ERROR = -1;
 		switch (input) {
 		case -1:
 			setMemoryCardReadError(0, 0x28);
 			break;
 		case 0:
 			if (count == 0) {
-				MAIN_D_80135040 = 5;
+				MEMORY_CARD_ERROR = 5;
 				TARGET_MENU = 0x30;
 			} else {
 				TARGET_MENU = 0x2B;
-				MAIN_D_80135058 = 1;
+				MEMORY_CARD_OPERATION = 1;
 			}
 			break;
 		default:
-			MAIN_D_80135040 = input;
+			MEMORY_CARD_ERROR = input;
 			TARGET_MENU = 0x30;
 			break;
 		}
 		break;
 
 	case 0x2B:
-		if (MAIN_D_80135048 >= 3) {
+		if (MAIN_MENU_TICKS >= 3) {
 			MemCardSync(0, &command, &result);
 			MAIN_D_8013192C[0] = 0x53;
 			MAIN_D_8013192C[1] = 0x43;
@@ -1905,9 +1905,9 @@ void tickMainMenu(void)
 		case 1:
 			if (cursor->pos == 0) {
 				mask = MEMORY_CARD_ID == 0 ? 1 : 0x10;
-				if (MAIN_D_80135030 & mask) {
+				if (MEMORY_CARD_PRESENT_MASK & mask) {
 					TARGET_MENU = 0x31;
-					MAIN_D_80135058 = 0;
+					MEMORY_CARD_OPERATION = 0;
 				}
 			} else {
 				TARGET_MENU = 0x28;
@@ -1919,7 +1919,7 @@ void tickMainMenu(void)
 		break;
 
 	case 0x31:
-		if (MAIN_D_80135048 >= 3) {
+		if (MAIN_MENU_TICKS >= 3) {
 			MemCardSync(0, &command, &result);
 			if (MemCardAccept(MEMORY_CARD_ID) == 0) {
 				setMemoryCardReadError(0, 0x28);
@@ -1930,17 +1930,17 @@ void tickMainMenu(void)
 			switch (result) {
 			case 0:
 				mask = MEMORY_CARD_ID == 0x10 ? 0x10 : 1;
-				MAIN_D_80135030 |= mask;
+				MEMORY_CARD_PRESENT_MASK |= mask;
 				TARGET_MENU = 0x2A;
 				break;
 			case 1:
 				mask = MEMORY_CARD_ID == 0x10 ? -0x11 : -2;
-				MAIN_D_80135030 &= mask;
-				MAIN_D_80135040 = 1;
+				MEMORY_CARD_PRESENT_MASK &= mask;
+				MEMORY_CARD_ERROR = 1;
 				TARGET_MENU = 0x30;
 				break;
 			default:
-				MAIN_D_80135040 = result;
+				MEMORY_CARD_ERROR = result;
 				TARGET_MENU = 0x30;
 				break;
 			}
@@ -1948,21 +1948,21 @@ void tickMainMenu(void)
 		break;
 
 	case 0x32:
-		if (MAIN_D_8013505C == 0) {
+		if (VS_PLAYER_INDEX == 0) {
 			MEMORY_CARD_ID = 0;
 		} else {
 			MEMORY_CARD_ID = 0x10;
 		}
 		cursor = (MenuCursor *)&MAIN_D_801316B8[13];
 		input = MAIN_func_8011239C(cursor,
-					   MAIN_D_8013505C == 0 ? 1 : 2);
+					   VS_PLAYER_INDEX == 0 ? 1 : 2);
 		switch (input) {
 		case 1:
 			if (cursor->pos == 0) {
 				mask = MEMORY_CARD_ID == 0 ? 1 : 0x10;
-				if (MAIN_D_80135030 & mask) {
+				if (MEMORY_CARD_PRESENT_MASK & mask) {
 					TARGET_MENU = 0x33;
-					MAIN_D_80135058 = 0;
+					MEMORY_CARD_OPERATION = 0;
 				}
 			} else {
 				TARGET_MENU = 0;
@@ -1975,7 +1975,7 @@ void tickMainMenu(void)
 		break;
 
 	case 0x33:
-		if (MAIN_D_80135048 >= 3) {
+		if (MAIN_MENU_TICKS >= 3) {
 			MemCardSync(0, &command, &result);
 			if (MemCardAccept(MEMORY_CARD_ID) == 0) {
 				setMemoryCardReadError(0, 0x32);
@@ -2001,7 +2001,7 @@ void tickMainMenu(void)
 	case 0x34:
 		cursor = (MenuCursor *)&MAIN_D_801316B8[7];
 		input = MAIN_func_8011296C(cursor,
-					   MAIN_D_8013505C == 0 ? 1 : 2);
+					   VS_PLAYER_INDEX == 0 ? 1 : 2);
 		slot = cursor->pos + cursor->scroll;
 		if (input != 2) {
 			if (input == 1) {
@@ -2019,12 +2019,12 @@ void tickMainMenu(void)
 	case 0x35:
 		cursor = (MenuCursor *)&MAIN_D_801316B8[8];
 		input = MAIN_func_8011239C(cursor,
-					   MAIN_D_8013505C == 0 ? 1 : 2);
+					   VS_PLAYER_INDEX == 0 ? 1 : 2);
 		if (input != 2) {
 			if (input == 1) {
 				if (cursor->pos == 0) {
 					TARGET_MENU = 0x36;
-					MAIN_D_80135058 = 2;
+					MEMORY_CARD_OPERATION = 2;
 				} else {
 					goto cancel_vs_load;
 				}
@@ -2037,7 +2037,7 @@ void tickMainMenu(void)
 		break;
 
 	case 0x36:
-		if (MAIN_D_80135048 >= 3) {
+		if (MAIN_MENU_TICKS >= 3) {
 			MemCardSync(0, &command, &result);
 			MAIN_D_8013190C[0xF] = MAIN_D_80131648[MEMORY_CARD_SLOT];
 			input = MemCardReadFile(MEMORY_CARD_ID, MAIN_D_8013190C,
@@ -2049,18 +2049,18 @@ void tickMainMenu(void)
 			if (result == 0) {
 				if (((SavegamePayload *)MAIN_D_80131B2C)->checksum ==
 				    createSavegameChecksum(0)) {
-					memcpy(MAIN_D_801346D4 + MAIN_D_8013505C * 0xA00,
+					memcpy(MAIN_D_801346D4 + VS_PLAYER_INDEX * 0xA00,
 					       MAIN_D_80131B2C + 0x500, 0xA00);
 				} else if (((SavegamePayload *)MAIN_D_80132A2C)->checksum ==
 					   createSavegameChecksum(1)) {
-					memcpy(MAIN_D_801346D4 + MAIN_D_8013505C * 0xA00,
+					memcpy(MAIN_D_801346D4 + VS_PLAYER_INDEX * 0xA00,
 					       MAIN_D_80132F2C, 0xA00);
 				} else {
 					setMemoryCardReadError(2, 0x32);
 					break;
 				}
 				if (MAIN_func_8011341C(MAIN_D_801346D4 +
-							 MAIN_D_8013505C * 0xA00)) {
+							 VS_PLAYER_INDEX * 0xA00)) {
 					TARGET_MENU = 0x37;
 				} else {
 					setMemoryCardReadError(8, 0x32);
@@ -2072,8 +2072,8 @@ void tickMainMenu(void)
 		break;
 
 	case 0x37:
-		if (MAIN_D_8013505C == 0) {
-			MAIN_D_8013505C = 1;
+		if (VS_PLAYER_INDEX == 0) {
+			VS_PLAYER_INDEX = 1;
 			TARGET_MENU = 0x32;
 		} else {
 			TARGET_MENU = 0x38;
@@ -2081,7 +2081,7 @@ void tickMainMenu(void)
 		break;
 
 	case 0x38:
-		if (MAIN_D_80135048 >= 3) {
+		if (MAIN_MENU_TICKS >= 3) {
 			removeObject(0x1388, 0);
 			removeObject(0xFA3, 0);
 			loadDynamicLibrary(VS_REL, &loadComplete, 0, 0, 0);
@@ -2103,7 +2103,7 @@ void tickMainMenu(void)
 				TARGET_MENU = 0x3D;
 				*(SavegamePayload *)MAIN_D_80131B2C =
 					*(SavegamePayload *)MAIN_D_80132A2C;
-				MAIN_D_80135074 = 0x3C;
+				SAVE_RETRY_RETURN_MENU = 0x3C;
 				break;
 			}
 			/* fall through */
@@ -2118,11 +2118,11 @@ void tickMainMenu(void)
 		oldScroll = cursor->scroll;
 		input = MAIN_func_8011239C(cursor, 1);
 		if (oldScroll != cursor->scroll) {
-			MAIN_func_8010FC48(cursor->scroll);
+			drawRegisteredBattleSlots(cursor->scroll);
 		}
 		if (input != 2) {
 			if (input == 1) {
-				MAIN_D_80135060 = cursor->scroll + cursor->pos;
+				BATTLE_REGISTRATION_SLOT = cursor->scroll + cursor->pos;
 				TARGET_MENU = 0x3E;
 			}
 		} else {
@@ -2138,7 +2138,7 @@ void tickMainMenu(void)
 			if (cursor->pos == 0) {
 				TARGET_MENU = 0x3F;
 				registerBattleData();
-				MAIN_D_80135058 = 0;
+				MEMORY_CARD_OPERATION = 0;
 			} else {
 				TARGET_MENU = 0x3D;
 			}
@@ -2150,10 +2150,10 @@ void tickMainMenu(void)
 		break;
 
 	case 0x3F:
-		if (MAIN_D_80135048 >= 3) {
+		if (MAIN_MENU_TICKS >= 3) {
 			MemCardSync(0, &command, &result);
 			if (MemCardExist(MEMORY_CARD_ID) == 0) {
-				setMemoryCardReadError(0, MAIN_D_80135074);
+				setMemoryCardReadError(0, SAVE_RETRY_RETURN_MENU);
 				break;
 			}
 			MemCardSync(0, &command, &result);
@@ -2162,17 +2162,17 @@ void tickMainMenu(void)
 				TARGET_MENU = 0x40;
 				break;
 			case 3:
-				MAIN_D_80135040 = -1;
+				MEMORY_CARD_ERROR = -1;
 				TARGET_MENU = 0x42;
 				break;
 			case 1:
 			case 2:
 			case 4:
-				MAIN_D_80135040 = result;
+				MEMORY_CARD_ERROR = result;
 				TARGET_MENU = 0x42;
 				break;
 			default:
-				setMemoryCardReadError(0, MAIN_D_80135074);
+				setMemoryCardReadError(0, SAVE_RETRY_RETURN_MENU);
 				break;
 			}
 		}
@@ -2183,29 +2183,29 @@ void tickMainMenu(void)
 		MAIN_D_8013190C[0xF] = MAIN_D_80131648[MEMORY_CARD_SLOT];
 		input = MemCardGetDirentry(MEMORY_CARD_ID, MAIN_D_8013190C,
 					MAIN_D_801346D0, (long *)&count, 0, 1);
-		MAIN_D_80135040 = -1;
+		MEMORY_CARD_ERROR = -1;
 		switch (input) {
 		case -1:
-			setMemoryCardReadError(0, MAIN_D_80135074);
+			setMemoryCardReadError(0, SAVE_RETRY_RETURN_MENU);
 			break;
 		case 0:
 			if (count == 0) {
-				MAIN_D_80135040 = 5;
+				MEMORY_CARD_ERROR = 5;
 				TARGET_MENU = 0x42;
 			} else {
 				TARGET_MENU = 0x41;
-				MAIN_D_80135058 = 1;
+				MEMORY_CARD_OPERATION = 1;
 			}
 			break;
 		default:
-			MAIN_D_80135040 = input;
+			MEMORY_CARD_ERROR = input;
 			TARGET_MENU = 0x42;
 			break;
 		}
 		break;
 
 	case 0x41:
-		if (MAIN_D_80135048 >= 3) {
+		if (MAIN_MENU_TICKS >= 3) {
 			MemCardSync(0, &command, &result);
 			MAIN_D_8013192C[0] = 0x53;
 			MAIN_D_8013192C[1] = 0x43;
@@ -2231,13 +2231,13 @@ void tickMainMenu(void)
 			input = MemCardWriteFile(MEMORY_CARD_ID, MAIN_D_8013190C,
 						 (long *)MAIN_D_8013192C, 0, 0x2000);
 			if (input != 1) {
-				setMemoryCardReadError(0, MAIN_D_80135074);
+				setMemoryCardReadError(0, SAVE_RETRY_RETURN_MENU);
 			}
 			MemCardSync(0, &command, &result);
 			if (result == 0) {
 				TARGET_MENU = 9;
 			} else {
-				setMemoryCardReadError(input, MAIN_D_80135074);
+				setMemoryCardReadError(input, SAVE_RETRY_RETURN_MENU);
 			}
 		}
 		break;
@@ -2249,12 +2249,12 @@ void tickMainMenu(void)
 		case 1:
 			if (cursor->pos == 0) {
 				mask = MEMORY_CARD_ID == 0 ? 1 : 0x10;
-				if (MAIN_D_80135030 & mask) {
+				if (MEMORY_CARD_PRESENT_MASK & mask) {
 					TARGET_MENU = 0x43;
-					MAIN_D_80135058 = 0;
+					MEMORY_CARD_OPERATION = 0;
 				}
 			} else {
-				TARGET_MENU = MAIN_D_80135074;
+				TARGET_MENU = SAVE_RETRY_RETURN_MENU;
 			}
 			break;
 		case 2:
@@ -2263,10 +2263,10 @@ void tickMainMenu(void)
 		break;
 
 	case 0x43:
-		if (MAIN_D_80135048 >= 3) {
+		if (MAIN_MENU_TICKS >= 3) {
 			MemCardSync(0, &command, &result);
 			if (MemCardAccept(MEMORY_CARD_ID) == 0) {
-				setMemoryCardReadError(0, MAIN_D_80135074);
+				setMemoryCardReadError(0, SAVE_RETRY_RETURN_MENU);
 				break;
 			}
 			MemCardSync(0, &command, &result);
@@ -2274,17 +2274,17 @@ void tickMainMenu(void)
 			switch (result) {
 			case 0:
 				mask = MEMORY_CARD_ID == 0x10 ? 0x10 : 1;
-				MAIN_D_80135030 |= mask;
+				MEMORY_CARD_PRESENT_MASK |= mask;
 				TARGET_MENU = 0x40;
 				break;
 			case 1:
 				mask = MEMORY_CARD_ID == 0x10 ? -0x11 : -2;
-				MAIN_D_80135030 &= mask;
-				MAIN_D_80135040 = 1;
+				MEMORY_CARD_PRESENT_MASK &= mask;
+				MEMORY_CARD_ERROR = 1;
 				TARGET_MENU = 0x42;
 				break;
 			default:
-				MAIN_D_80135040 = result;
+				MEMORY_CARD_ERROR = result;
 				TARGET_MENU = 0x42;
 				break;
 			}
@@ -2296,7 +2296,7 @@ void tickMainMenu(void)
 			playSound(0, 3);
 			TARGET_MENU = 9;
 		}
-		if (MAIN_D_80135048 >= 0x79) {
+		if (MAIN_MENU_TICKS >= 0x79) {
 			TARGET_MENU = 9;
 		}
 		break;
@@ -2308,8 +2308,8 @@ void tickMainMenu(void)
 		case 1:
 			if (cursor->pos == 0) {
 				TARGET_MENU = 0x3F;
-				MAIN_D_80135074 = 0x45;
-				MAIN_D_80135058 = 0;
+				SAVE_RETRY_RETURN_MENU = 0x45;
+				MEMORY_CARD_OPERATION = 0;
 			} else {
 				TARGET_MENU = 9;
 			}
@@ -2384,7 +2384,7 @@ int32_t MAIN_func_80112524(int32_t menu)
 	} else {
 		mask = 0x10;
 	}
-	if (!(MAIN_D_80135030 & mask)) {
+	if (!(MEMORY_CARD_PRESENT_MASK & mask)) {
 		return menu;
 	}
 	if (MEMORY_CARD_ID == 0) {
@@ -2392,17 +2392,17 @@ int32_t MAIN_func_80112524(int32_t menu)
 	} else {
 		mask2 = 0x10;
 	}
-	if (MAIN_D_80135050 & mask2) {
+	if (MEMORY_CARD_CHANGED_MASK & mask2) {
 		return menu;
 	}
 	return TARGET_MENU;
 }
 
-void setMemoryCardReadError(int32_t id, int32_t slot)
+void setMemoryCardReadError(int32_t id, int32_t returnMenu)
 {
 	TARGET_MENU = 3;
-	MAIN_D_80135040 = id;
-	MAIN_D_8013506C = slot;
+	MEMORY_CARD_ERROR = id;
+	MEMORY_CARD_RETURN_MENU = returnMenu;
 }
 
 int32_t MAIN_func_801125A8(int32_t chan, int32_t mode)
@@ -2423,7 +2423,7 @@ int32_t MAIN_func_801125A8(int32_t chan, int32_t mode)
 	return result;
 }
 
-int32_t MAIN_func_80112628(int32_t channel, int32_t slot)
+int32_t countUsedMemoryCardBlocks(int32_t channel, int32_t returnMenu)
 {
 	unsigned long cmd;
 	unsigned long result;
@@ -2443,10 +2443,10 @@ int32_t MAIN_func_80112628(int32_t channel, int32_t slot)
 	goto success;
 
 missing:
-	setMemoryCardReadError(0, slot);
+	setMemoryCardReadError(0, returnMenu);
 	return -1;
 error:
-	setMemoryCardReadError(status, slot);
+	setMemoryCardReadError(status, returnMenu);
 	return -1;
 success:
 
@@ -2867,7 +2867,7 @@ void registerBattleData(void)
 {
 	int16_t *rec;
 
-	rec = (int16_t *)(&MAIN_D_8013192C[MAIN_D_80135060 << 6] + 0x700);
+	rec = (int16_t *)(&MAIN_D_8013192C[BATTLE_REGISTRATION_SLOT << 6] + 0x700);
 	rec[0] = PARTNER_ENTITY.digimonEntity.stats.base.hp;
 	rec[1] = PARTNER_ENTITY.digimonEntity.stats.base.mp;
 	rec[2] = PARTNER_ENTITY.digimonEntity.stats.base.off;
@@ -2995,7 +2995,7 @@ void MAIN_func_8010D034(void)
 
 	cur = (POLY_FT4 *)GsGetWorkBase();
 	renderText(cur++, 0x52, 0x37, 0, 0, 0xB0, 0xC, 0);
-	if (MAIN_D_80135030 != 0) {
+	if (MEMORY_CARD_PRESENT_MASK != 0) {
 		renderText(cur++, 0x52, 0x43, 0, 0xC, 0xB0, 0x18, 0);
 	} else {
 		renderText(cur++, 0x52, 0x43, 0, 0xC, 0xB0, 0x18, 1);
