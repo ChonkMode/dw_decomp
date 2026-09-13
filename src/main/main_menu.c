@@ -1,9 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <kernel.h>
 #include <libgs.h>
-/* kernel.h exposes assembly register macros to this compiler configuration. */
-struct DIRENTRY;
 #include <libmcrd.h>
 
 #include <dw/entity.h>
@@ -17,16 +16,6 @@ struct DIRENTRY;
 #include <dw/world_object.h>
 
 #include "common.h"
-
-/* Match the canonical PsyQ kernel.h DIRENTRY layout used by libmcrd. */
-struct DIRENTRY {
-	char name[20];
-	long attr;
-	long size;
-	struct DIRENTRY *next;
-	long head;
-	char system[4];
-};
 
 typedef struct {
 	int8_t pos;
@@ -1262,10 +1251,6 @@ void updateMemoryCardState(void)
 	}
 }
 
-/* PsyQ spells these fixed-width output words as unsigned long; O32 long is 32-bit. */
-#define MemCardSync(mode, command, result) \
-	MemCardSync((mode), (unsigned long *)(command), (unsigned long *)(result))
-
 void tickMainMenu(void)
 {
 	uint32_t command;
@@ -1341,7 +1326,7 @@ void tickMainMenu(void)
 
 	case 2:
 		if (MAIN_MENU_TICKS >= 3) {
-			MemCardSync(0, &command, &result);
+			MemCardSync(0, (unsigned long *)&command, (unsigned long *)&result);
 			input = MemCardFormat(MEMORY_CARD_ID);
 			switch (input) {
 			case 0:
@@ -1413,12 +1398,12 @@ void tickMainMenu(void)
 
 	case 0xC:
 		if (MAIN_MENU_TICKS >= 3) {
-			MemCardSync(0, &command, &result);
+			MemCardSync(0, (unsigned long *)&command, (unsigned long *)&result);
 			if (MemCardAccept(MEMORY_CARD_ID) == 0) {
 				setMemoryCardReadError(0, 0);
 				break;
 			}
-			MemCardSync(0, &command, &result);
+			MemCardSync(0, (unsigned long *)&command, (unsigned long *)&result);
 			result = MAIN_func_801125A8(MEMORY_CARD_ID, result);
 			switch (result) {
 			case 0:
@@ -1485,7 +1470,7 @@ void tickMainMenu(void)
 		break;
 
 	case 0x10:
-		if ((MAIN_MENU_TICKS >= 3) && MemCardSync(1, &command, &result)) {
+		if ((MAIN_MENU_TICKS >= 3) && MemCardSync(1, (unsigned long *)&command, (unsigned long *)&result)) {
 			MAIN_D_8013190C[0xF] = MAIN_D_80131648[MEMORY_CARD_SLOT];
 			input = MemCardCreateFile(MEMORY_CARD_ID, MAIN_D_8013190C, 1);
 			switch (input) {
@@ -1507,7 +1492,7 @@ void tickMainMenu(void)
 		break;
 
 	case 0x11:
-		MemCardSync(0, &command, &result);
+		MemCardSync(0, (unsigned long *)&command, (unsigned long *)&result);
 		MAIN_D_8013192C[0] = 0x53;
 		MAIN_D_8013192C[1] = 0x43;
 		MAIN_D_8013192C[2] = 0x13;
@@ -1534,7 +1519,7 @@ void tickMainMenu(void)
 		if (input != 1) {
 			setMemoryCardReadError(0, 0);
 		}
-		MemCardSync(0, &command, &result);
+		MemCardSync(0, (unsigned long *)&command, (unsigned long *)&result);
 		if (result == 0) {
 			TARGET_MENU = 9;
 			loadSavegame(MAIN_D_80131B2C);
@@ -1594,12 +1579,12 @@ void tickMainMenu(void)
 
 	case 0x15:
 		if (MAIN_MENU_TICKS >= 3) {
-			MemCardSync(0, &command, &result);
+			MemCardSync(0, (unsigned long *)&command, (unsigned long *)&result);
 			if (MemCardAccept(MEMORY_CARD_ID) == 0) {
 				setMemoryCardReadError(0, 0);
 				break;
 			}
-			MemCardSync(0, &command, &result);
+			MemCardSync(0, (unsigned long *)&command, (unsigned long *)&result);
 			result = MAIN_func_801125A8(MEMORY_CARD_ID, result);
 			if (result == 0) {
 				TARGET_MENU = 0x16;
@@ -1654,14 +1639,14 @@ void tickMainMenu(void)
 
 	case 0x19:
 		if (MAIN_MENU_TICKS >= 3) {
-			MemCardSync(0, &command, &result);
+			MemCardSync(0, (unsigned long *)&command, (unsigned long *)&result);
 			MAIN_D_8013190C[0xF] = MAIN_D_80131648[MEMORY_CARD_SLOT];
 			input = MemCardReadFile(MEMORY_CARD_ID, MAIN_D_8013190C,
 					    (long *)MAIN_D_8013192C, 0, 0x2000);
 			if (input != 1) {
 				setMemoryCardReadError(0, 0);
 			}
-			MemCardSync(0, &command, &result);
+			MemCardSync(0, (unsigned long *)&command, (unsigned long *)&result);
 			if (result == 0) {
 				if (((SavegamePayload *)MAIN_D_80131B2C)->checksum ==
 				    createSavegameChecksum(0)) {
@@ -1715,12 +1700,12 @@ void tickMainMenu(void)
 
 	case 0x1F:
 		if (MAIN_MENU_TICKS >= 3) {
-			MemCardSync(0, &command, &result);
+			MemCardSync(0, (unsigned long *)&command, (unsigned long *)&result);
 			if (MemCardAccept(MEMORY_CARD_ID) == 0) {
 				setMemoryCardReadError(0, 0);
 				break;
 			}
-			MemCardSync(0, &command, &result);
+			MemCardSync(0, (unsigned long *)&command, (unsigned long *)&result);
 			result = MAIN_func_801125A8(MEMORY_CARD_ID, result);
 			if (result == 0) {
 				TARGET_MENU = 0x20;
@@ -1774,7 +1759,7 @@ void tickMainMenu(void)
 		break;
 
 	case 0x23:
-		if ((MAIN_MENU_TICKS >= 3) && MemCardSync(1, &command, &result)) {
+		if ((MAIN_MENU_TICKS >= 3) && MemCardSync(1, (unsigned long *)&command, (unsigned long *)&result)) {
 			MAIN_D_8013190C[0xF] = MAIN_D_80131648[MEMORY_CARD_SLOT];
 			input = MemCardDeleteFile(MEMORY_CARD_ID, MAIN_D_8013190C);
 			if (input == 0) {
@@ -1807,12 +1792,12 @@ void tickMainMenu(void)
 
 	case 0x29:
 		if (MAIN_MENU_TICKS >= 3) {
-			MemCardSync(0, &command, &result);
+			MemCardSync(0, (unsigned long *)&command, (unsigned long *)&result);
 			if (MemCardExist(MEMORY_CARD_ID) == 0) {
 				setMemoryCardReadError(0, 0x28);
 				break;
 			}
-			MemCardSync(0, &command, &result);
+			MemCardSync(0, (unsigned long *)&command, (unsigned long *)&result);
 			switch (result) {
 			case 0:
 				TARGET_MENU = 0x2A;
@@ -1835,7 +1820,7 @@ void tickMainMenu(void)
 		break;
 
 	case 0x2A:
-		MemCardSync(0, &command, &result);
+		MemCardSync(0, (unsigned long *)&command, (unsigned long *)&result);
 		MAIN_D_8013190C[0xF] = MAIN_D_80131648[MEMORY_CARD_SLOT];
 		input = MemCardGetDirentry(MEMORY_CARD_ID, MAIN_D_8013190C,
 					MAIN_D_801346D0, (long *)&count, 0, 1);
@@ -1862,7 +1847,7 @@ void tickMainMenu(void)
 
 	case 0x2B:
 		if (MAIN_MENU_TICKS >= 3) {
-			MemCardSync(0, &command, &result);
+			MemCardSync(0, (unsigned long *)&command, (unsigned long *)&result);
 			MAIN_D_8013192C[0] = 0x53;
 			MAIN_D_8013192C[1] = 0x43;
 			MAIN_D_8013192C[2] = 0x13;
@@ -1889,7 +1874,7 @@ void tickMainMenu(void)
 			if (input != 1) {
 				setMemoryCardReadError(0, 0x28);
 			}
-			MemCardSync(0, &command, &result);
+			MemCardSync(0, (unsigned long *)&command, (unsigned long *)&result);
 			if (result == 0) {
 				TARGET_MENU = 9;
 			} else {
@@ -1920,12 +1905,12 @@ void tickMainMenu(void)
 
 	case 0x31:
 		if (MAIN_MENU_TICKS >= 3) {
-			MemCardSync(0, &command, &result);
+			MemCardSync(0, (unsigned long *)&command, (unsigned long *)&result);
 			if (MemCardAccept(MEMORY_CARD_ID) == 0) {
 				setMemoryCardReadError(0, 0x28);
 				break;
 			}
-			MemCardSync(0, &command, &result);
+			MemCardSync(0, (unsigned long *)&command, (unsigned long *)&result);
 			result = MAIN_func_801125A8(MEMORY_CARD_ID, result);
 			switch (result) {
 			case 0:
@@ -1976,12 +1961,12 @@ void tickMainMenu(void)
 
 	case 0x33:
 		if (MAIN_MENU_TICKS >= 3) {
-			MemCardSync(0, &command, &result);
+			MemCardSync(0, (unsigned long *)&command, (unsigned long *)&result);
 			if (MemCardAccept(MEMORY_CARD_ID) == 0) {
 				setMemoryCardReadError(0, 0x32);
 				break;
 			}
-			MemCardSync(0, &command, &result);
+			MemCardSync(0, (unsigned long *)&command, (unsigned long *)&result);
 			result = MAIN_func_801125A8(MEMORY_CARD_ID, result);
 			if (result == 0) {
 				TARGET_MENU = 0x34;
@@ -2038,14 +2023,14 @@ void tickMainMenu(void)
 
 	case 0x36:
 		if (MAIN_MENU_TICKS >= 3) {
-			MemCardSync(0, &command, &result);
+			MemCardSync(0, (unsigned long *)&command, (unsigned long *)&result);
 			MAIN_D_8013190C[0xF] = MAIN_D_80131648[MEMORY_CARD_SLOT];
 			input = MemCardReadFile(MEMORY_CARD_ID, MAIN_D_8013190C,
 					    (long *)MAIN_D_8013192C, 0, 0x2000);
 			if (input != 1) {
 				setMemoryCardReadError(0, 0x32);
 			}
-			MemCardSync(0, &command, &result);
+			MemCardSync(0, (unsigned long *)&command, (unsigned long *)&result);
 			if (result == 0) {
 				if (((SavegamePayload *)MAIN_D_80131B2C)->checksum ==
 				    createSavegameChecksum(0)) {
@@ -2151,12 +2136,12 @@ void tickMainMenu(void)
 
 	case 0x3F:
 		if (MAIN_MENU_TICKS >= 3) {
-			MemCardSync(0, &command, &result);
+			MemCardSync(0, (unsigned long *)&command, (unsigned long *)&result);
 			if (MemCardExist(MEMORY_CARD_ID) == 0) {
 				setMemoryCardReadError(0, SAVE_RETRY_RETURN_MENU);
 				break;
 			}
-			MemCardSync(0, &command, &result);
+			MemCardSync(0, (unsigned long *)&command, (unsigned long *)&result);
 			switch (result) {
 			case 0:
 				TARGET_MENU = 0x40;
@@ -2179,7 +2164,7 @@ void tickMainMenu(void)
 		break;
 
 	case 0x40:
-		MemCardSync(0, &command, &result);
+		MemCardSync(0, (unsigned long *)&command, (unsigned long *)&result);
 		MAIN_D_8013190C[0xF] = MAIN_D_80131648[MEMORY_CARD_SLOT];
 		input = MemCardGetDirentry(MEMORY_CARD_ID, MAIN_D_8013190C,
 					MAIN_D_801346D0, (long *)&count, 0, 1);
@@ -2206,7 +2191,7 @@ void tickMainMenu(void)
 
 	case 0x41:
 		if (MAIN_MENU_TICKS >= 3) {
-			MemCardSync(0, &command, &result);
+			MemCardSync(0, (unsigned long *)&command, (unsigned long *)&result);
 			MAIN_D_8013192C[0] = 0x53;
 			MAIN_D_8013192C[1] = 0x43;
 			MAIN_D_8013192C[2] = 0x13;
@@ -2233,7 +2218,7 @@ void tickMainMenu(void)
 			if (input != 1) {
 				setMemoryCardReadError(0, SAVE_RETRY_RETURN_MENU);
 			}
-			MemCardSync(0, &command, &result);
+			MemCardSync(0, (unsigned long *)&command, (unsigned long *)&result);
 			if (result == 0) {
 				TARGET_MENU = 9;
 			} else {
@@ -2264,12 +2249,12 @@ void tickMainMenu(void)
 
 	case 0x43:
 		if (MAIN_MENU_TICKS >= 3) {
-			MemCardSync(0, &command, &result);
+			MemCardSync(0, (unsigned long *)&command, (unsigned long *)&result);
 			if (MemCardAccept(MEMORY_CARD_ID) == 0) {
 				setMemoryCardReadError(0, SAVE_RETRY_RETURN_MENU);
 				break;
 			}
-			MemCardSync(0, &command, &result);
+			MemCardSync(0, (unsigned long *)&command, (unsigned long *)&result);
 			result = MAIN_func_801125A8(MEMORY_CARD_ID, result);
 			switch (result) {
 			case 0:
@@ -2327,8 +2312,6 @@ void tickMainMenu(void)
 		break;
 	}
 }
-
-#undef MemCardSync
 
 int32_t MAIN_func_8011239C(MenuCursor *cursor, int32_t which)
 {
