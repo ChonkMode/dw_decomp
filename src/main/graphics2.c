@@ -1,6 +1,7 @@
 #include <libgpu.h>
 #include <libgs.h>
 #include <libgte.h>
+#include <mwinline_n.h>
 
 #include <dw/types.h>
 
@@ -58,6 +59,9 @@ void renderTrianglePrimitive(uint32_t color, int16_t x0, int16_t y0,
 void renderLinePrimitive(uint32_t color, int16_t x0, int16_t y0, int16_t x1,
 			 int32_t y1, int32_t order, uint32_t mode);
 void rotateVectorYXZ(SVECTOR *rotation, VECTOR *input, VECTOR *output);
+void toEulerAngles(SVECTOR *output, int32_t deltaX, int32_t deltaY,
+		   int32_t deltaZ);
+int32_t getDistance(int32_t deltaX, int32_t deltaY, int32_t deltaZ);
 void matrixToEuler2(MATRIX *matrix, SVECTOR *output);
 void multiplyRotations(SVECTOR *rotation1, SVECTOR *rotation2);
 int32_t customRandom(int32_t min, int32_t max);
@@ -138,9 +142,91 @@ void rotateVectorYXZ(SVECTOR *rotation, VECTOR *input, VECTOR *output)
 	ApplyMatrixLV(&matrix, input, output);
 }
 
-INCLUDE_ASM("asm/main/nonmatchings/graphics2", toEulerAngles);
+void toEulerAngles(SVECTOR *output, int32_t deltaX, int32_t deltaY,
+		   int32_t deltaZ)
+{
+	int32_t adjustment;
 
-INCLUDE_ASM("asm/main/nonmatchings/graphics2", getDistance);
+	output->vy = ratan2(deltaX, deltaZ);
+	deltaZ = getDistance(deltaX, 0, deltaZ);
+	output->vx = -ratan2(deltaY, deltaZ);
+	output->vz = 0;
+
+	output->vx &= 0xfff;
+	adjustment = output->vx >= 0x800 ? 0x1000 : 0;
+	output->vx -= adjustment;
+
+	output->vy &= 0xfff;
+	adjustment = output->vy >= 0x800 ? 0x1000 : 0;
+	output->vy -= adjustment;
+}
+
+int32_t getDistance(int32_t deltaX, int32_t deltaY, int32_t deltaZ)
+{
+	int32_t absX;
+	int32_t absZ;
+	int32_t sum;
+	int32_t leadingZeroes;
+	int32_t shift;
+	int32_t value;
+	int32_t estimate;
+
+	value = value = deltaX;
+	if (value > 0) {
+		absX = value;
+	} else {
+		absX = -value;
+	}
+	value = absX;
+	if (deltaY > 0) {
+		deltaX = deltaY;
+	} else {
+		deltaX = -deltaY;
+	}
+	deltaY = deltaX;
+	if (deltaZ > 0) {
+		absZ = deltaZ;
+	} else {
+		absZ = -deltaZ;
+	}
+	deltaZ = absZ;
+	sum = absX + deltaX + absZ;
+
+	gte_ldlzc(sum);
+	if (sum <= 0) {
+		return sum != 0 ? 0x80000000 : 0;
+	}
+
+	gte_stlzc(&leadingZeroes);
+	shift = 17 - leadingZeroes;
+	if (shift < 0) {
+		goto negative_shift;
+	}
+	value >>= shift;
+	goto shift_complete;
+negative_shift:
+	shift = (shift = 0);
+	value >>= shift;
+shift_complete:
+
+	deltaY >>= shift;
+	deltaZ >>= shift;
+	value = value * value + deltaY * deltaY + deltaZ * deltaZ;
+
+	gte_ldlzc(value);
+	estimate = MAIN_D_80114D68[value & 0xff];
+	if (value >= 0x100) {
+		gte_stlzc(&leadingZeroes);
+		deltaY = (leadingZeroes & 1) + 24 - leadingZeroes;
+		estimate = MAIN_D_80114D68[value >> deltaY] << (deltaY >> 1);
+
+		estimate += ((value / estimate) - estimate) >> 1;
+		estimate += ((value / estimate) - estimate) >> 1;
+	}
+
+	value = estimate << shift;
+	return value < 0 ? 0x80000000 : value;
+}
 
 INCLUDE_ASM("asm/main/nonmatchings/graphics2", MAIN_func_800E4470);
 
